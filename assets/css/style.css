@@ -153,10 +153,10 @@
     }
 </style>
 
-style="
-    color:var(--primary);
-    font-weight:900;
-    font-size:60px;
-    letter-spacing:1px;
-    text-shadow:3px 3px 10px rgba(0,0,0,0.35);
-">
+.hero h1 {
+    color: var(--primary);
+    font-weight: 900;
+    font-size: 60px;
+    letter-spacing: 1px;
+    text-shadow: 3px 3px 10px rgba(0,0,0,0.35);
+}
