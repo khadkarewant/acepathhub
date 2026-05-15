@@ -391,7 +391,7 @@ a {
 }
 
 .footer-social a {
-    color: var(--muted);
+    color: var(--accent);
     font-size: 1.6rem;
     transition: color 0.2s;
 }

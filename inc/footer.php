@@ -6,8 +6,8 @@
 
             <!-- Logo + description -->
             <div class="col-12 col-md-3 mb-4">
-                <img src="assets/img/logo.png" class="footer-logo" alt="AcePath Hub">
-                <p class="footer-desc">Mock MCQs for different competitive exams.</p>
+                <span style="color:var(--accent); font-weight:800; font-size:1.3rem;">AcePath Hub</span>
+                <p class="footer-desc">Your complete exam preparation platform for JAMB, WAEC, NECO and more.</p>
             </div>
 
             <!-- Policies -->
