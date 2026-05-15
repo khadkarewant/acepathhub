@@ -144,12 +144,13 @@ a {
 #side_panel {
     position: relative;
     overflow: visible;
+    min-height: 100%;
 }
 
 .side_menu_links {
     width: 230px;
     max-width: 100%;
-    min-height: calc(100vh - 60px);
+    min-height: 100%;
     background: var(--sidebar-bg);
     border-right: 1px solid var(--border);
     text-align: left;
