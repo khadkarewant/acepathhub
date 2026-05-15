@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__ . '/../config/roles.php';
 
 $config = require '/home/quizmani/acepathhub_secure/db.php';
 
