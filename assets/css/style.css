@@ -349,14 +349,65 @@ a {
 }
 
 /* ── Footer ──────────────────────────────── */
-.footer a {
-    display: block;
-    text-decoration: none;
-    color: var(--muted);
+.footer {
+    background: var(--sidebar-bg);
+    border-top: 2px solid var(--border);
+    padding: 40px 0 20px;
 }
 
-.footer a:hover {
+.footer-logo {
+    width: 60px;
+}
+
+.footer-desc {
+    color: var(--muted);
+    font-size: 0.9rem;
+    margin-top: 10px;
+}
+
+.footer-title {
+    font-weight: 600;
     color: var(--accent);
+    margin-bottom: 8px;
+}
+
+.footer-links a {
+    display: block;
+    color: var(--muted);
+    text-decoration: none;
+    margin: 4px 0;
+    font-size: 0.95rem;
+}
+
+.footer-links a:hover {
+    color: var(--accent);
+}
+
+.footer-social {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    margin-top: 8px;
+}
+
+.footer-social a {
+    color: var(--muted);
+    font-size: 1.6rem;
+    transition: color 0.2s;
+}
+
+.footer-social a:hover {
+    color: var(--accent);
+}
+
+.footer-copyright {
+    text-align: center;
+    color: var(--accent);
+    font-weight: 500;
+    font-size: 1rem;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
 }
 
 /* ── Messenger float ─────────────────────── */
