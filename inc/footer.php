@@ -1,6 +1,8 @@
+</div><!-- /#main-content -->
+
 <?php if (!isset($_SESSION['user_id'])): ?>
 
-<footer class="footer mt-5">
+<footer class="footer">
     <div class="container">
         <div class="row text-center text-md-start">
 
