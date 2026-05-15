@@ -160,3 +160,218 @@
     letter-spacing: 1px;
     text-shadow: 3px 3px 10px rgba(0,0,0,0.35);
 }
+
+<style>
+    .desktop{
+        display:block;
+    }
+    .mobile{
+        display:none;
+    }
+
+    @media only screen and (max-width: 500px){
+        .desktop{
+            display:none;
+        }
+        .mobile{
+            display:block;
+        }
+
+        #side_panel_icon{
+            display:block;
+        }
+
+        .side_panel_cancel{
+            display: none;
+        }
+
+        #side_menu_links{
+            display:none;
+        }
+    }
+
+    *{
+        font-family:'Times New Roman', Times, serif;
+    }
+
+    :root{
+        --primary:rgb(4, 102, 200);
+        /* --primary:rgb(14, 36, 99); */
+    } 
+
+
+    .new{
+        width:7px;
+        height:7px;
+        border-radius: 50%;
+        background:firebrick;
+        display:inline-block;
+        position:absolute;
+    }
+
+    .profile_img{
+        width:30px;
+        height:35px;
+        border-radius:50%;
+        border:1px solid var(--primary);
+    }
+    .links{
+        display:inline-block;
+        color:white;
+        padding:0px 5px;
+        position:relative;
+        width:fit-content;
+        cursor:pointer;
+    }
+
+    .links a{
+        text-decoration: none;
+        color:white;
+        display: block;
+    }
+
+    .submenu{
+        background: var(--primary);
+        position:absolute;
+        right:0px;
+        text-align:left;
+        width:120px;
+        display:none;
+    }
+    .sublinks{
+        border:1px solid var(--primary);
+        padding:2px 10px;
+    }
+
+    .sublinks:hover{
+        background:white;
+        padding:2px 10px;
+    }
+
+    .sublinks:hover a{
+        display: block;
+        color:var(--primary);
+    }
+
+
+    .icon{
+        font-size:30px;
+        color:white;
+        font-weight:700;
+        float:right;
+        cursor:pointer;
+    }
+
+    .side_panel_icon{
+        display:none;
+        width:23px;
+        padding:3px 7px;
+        cursor:pointer;
+        box-shadow:0px 0px 5px grey;
+        border-radius:50%;
+        font-weight:700;
+        background:white
+    }
+
+    .side_panel_icon:hover{
+        transform: scale(1.1);
+    }
+
+    .side_panel_cancel{
+        display:none;
+        width:23px;
+        padding:3px 7px;
+        cursor:pointer;
+        box-shadow:0px 0px 5px grey;
+        border-radius:50%;
+        font-weight:700;
+        background:white;
+    }
+    .side_panel_cancel:hover{
+        box-shadow:0px 0px 5px var(--primary);
+    }
+
+
+    #side_panel{
+        position:relative;
+    }
+
+    .side_menu_links{
+        width:250px;
+        max-width:100%;
+        height:calc(100vh - 72px);
+        position:absolute;
+        left:0px;
+        border:1px solid var(--primary);
+        text-align:left;
+        background:whitesmoke;
+    }
+
+    .side-links{
+        color:var(--primary);
+        display:block;
+        padding:4px 0px 4px 10px;
+        width:100%;
+        cursor:pointer;
+        border:1px solid var(--primary);
+    }
+
+    .side-links a{
+        text-decoration: none;
+        display: block;
+        color:var(--primary);
+    }
+
+    .side-submenu{
+        background: white;
+        width:100%;
+        height:fit-content;
+        text-align:left;
+        display:none;
+    }
+
+    .side-sublinks{
+        border:1px solid var(--primary);
+        padding:4px 10px;
+    }
+
+    .side-sublinks:hover{
+        background:white;
+    }
+
+    .side-sublinks:hover a{
+        display: block;
+        color:var(--primary);
+    }
+
+    .side-links:hover .side-submenu{
+        display: block;
+        
+    }
+
+    .footer a{
+        display:block;
+        text-decoration:none;
+        color: var(--primary);
+    }
+
+    .footer a:hover{
+        color: grey;
+    }
+
+    .messanger img{
+        width:40px;
+        border-radius: 50%;
+        height:40px;
+        position: fixed;
+        right:18px;
+        bottom:18px;
+        box-shadow: 0px 0px 10px grey;
+        cursor: pointer;
+        border:1px solid white;
+    }
+    .messanger img:hover{
+        transform: scale(1.1);
+        transition-duration: 200ms;
+    }
+</style>
