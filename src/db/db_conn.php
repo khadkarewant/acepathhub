@@ -1,14 +1,20 @@
 <?php
+declare(strict_types=1);
 
-    date_default_timezone_set("Asia/Kathmandu");
+$config = require '/home/quizmani/acepathhub_secure/db.php';
 
-    $username = "localhost";
-    $user = "root";
-    $pasword = "";
-    $type="";
-    $db_name = "quizmania_restore_test";
+date_default_timezone_set('Africa/Lagos');
 
+$conn = mysqli_connect(
+    $config['host'],
+    $config['user'],
+    $config['pass'],
+    $config['name']
+);
 
-    // connect db and use current db
-    $conn = mysqli_connect($username, $user, $pasword, $db_name);
-?>
+if (!$conn) {
+    http_response_code(500);
+    exit('Database connection failed.');
+}
+
+mysqli_set_charset($conn, 'utf8mb4');
