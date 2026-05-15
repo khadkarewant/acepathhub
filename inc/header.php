@@ -10,7 +10,7 @@ $user_id = $_SESSION['user_id'] ?? null;
         </div>
         <div class="col-3 header-logo">
             <a href="<?= isset($_SESSION['user_id']) ? 'home.php' : 'index.php' ?>">
-                <img src="assets/img/logo.png" style="width:50px;" />
+                <span style="color:var(--accent); font-weight:800; font-size:1.3rem; letter-spacing:1px;">AcePath Hub</span>
             </a>
         </div>
         <div class="col-7" style="text-align:right">
