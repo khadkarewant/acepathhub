@@ -18,22 +18,22 @@ session_set_cookie_params([
 ]);
 
 session_start();
-require_once __DIR__ . '/../security/csrf.php';
+require_once __DIR__ . '/../config/csrf.php';
 
 
 // Redirect if user not logged in
-if (!isset($_SESSION['id']) || empty($_SESSION['id'])) {
+if (!isset($_SESSION['user_id']) || empty($_SESSION['user_id'])) {
     header("Location: login.php");
     exit;
 }
 
-$user_id = $_SESSION['id'];
+$user_id = $_SESSION['user_id'];
 
 // Fetch user data and validate session token
 $stmt = mysqli_prepare($conn,
     "SELECT user_id, username, first_name, middle_name, last_name,
-            email, phone, pin, password, dob, gender, country, city,
-            postal_code, type, status, last_login_on, last_login_at,
+            email, phone, pin, dob, gender, country, city,
+            postal_code, role, status, last_login_on, last_login_at,
             referral_code, is_session, session_token
      FROM users
      WHERE user_id = ?
@@ -58,7 +58,7 @@ $row = mysqli_fetch_assoc($result);
 mysqli_stmt_close($stmt);
 
 // Check if session is valid (single-device login)
-if ($row['is_session'] !== 'true' || !isset($_SESSION['token']) || $_SESSION['token'] !== $row['session_token']) {
+if ($row['is_session'] !== 1 || !isset($_SESSION['session_token']) || !hash_equals($row['session_token'], $_SESSION['session_token'])) {
     // Invalid session → force logout
     session_destroy();
     header("Location: login.php?msg=Session expired");
@@ -66,37 +66,16 @@ if ($row['is_session'] !== 'true' || !isset($_SESSION['token']) || $_SESSION['to
 }
 
 // ===================== User Data =====================
-$count_profile_details = 0;
+$user = $row;
+$user['role'] = (int)$row['role'];
+$role = $user['role'];
 
-$user_id = $row['user_id'];
-$username = $row['username'];
-$first_name = $row['first_name'];
-$middle_name = $row['middle_name'];
-$last_name = $row['last_name'];
-$email = $row['email'];
-$phone = $row['phone'];
-$pin = $row['pin'];
-$password = $row['password'];
-$dob = $row['dob'];
-$gender = $row['gender'];
-if ($gender === NULL) $count_profile_details++;
+$incomplete_fields = array_filter([
+    $user['gender'],
+    $user['country'],
+    $user['city'],
+    $user['postal_code'],
+], fn($v) => $v === null);
 
-$country = $row['country'];
-if ($country === NULL) $count_profile_details++;
-
-$city = $row['city'];
-if ($city === NULL) $count_profile_details++;
-
-$postal_code = $row['postal_code'];
-if ($postal_code === NULL) $count_profile_details++;
-
-$type = $row['type'];
-$status = $row['status'];
-$last_login_on = $row['last_login_on'];
-$last_login_at = $row['last_login_at'];
-
-$referral_code = $row['referral_code'];
-
-// Remaining uncompleted profile fields (optional)
-$uncompleted_details = 12 - $count_profile_details;
+$uncompleted_details = count($incomplete_fields);
 ?>
