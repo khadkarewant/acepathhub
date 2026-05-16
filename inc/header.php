@@ -11,7 +11,7 @@
             <a href="notification.php" id="notif-link" title="Notifications">
                 <i class="fa-solid fa-bell"></i>
                 <?php
-                    $stmt = mysqli_prepare($conn, "SELECT notif_id FROM notification WHERE user_id = ? AND is_read = 0 LIMIT 1");
+                    $stmt = mysqli_prepare($conn, "SELECT id FROM notification WHERE user_id = ? AND is_read = 0 LIMIT 1");
                     mysqli_stmt_bind_param($stmt, 'i', $user_id);
                     mysqli_stmt_execute($stmt);
                     $result = mysqli_stmt_get_result($stmt);
