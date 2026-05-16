@@ -516,21 +516,19 @@ a {
     }
 }
 
-<style>
-    .info_card{
-        display:inline-block;
-        margin:10px; 
-        padding:10px;
-        border-radius:5px;
-        border:1px solid var(--primary);
-        text-align:center;
-        color:var(--primary);
-    }
+.info_card{
+    display:inline-block;
+    margin:10px; 
+    padding:10px;
+    border-radius:5px;
+    border:1px solid var(--accent);
+    text-align:center;
+    color:var(--accent);
+}
 
-    .info_card:hover{
-        color:white;
-        background:var(--primary);
-        box-shadow:5px 5px 10px grey;
-        cursor:pointer;
-    }
-</style>
+.info_card:hover{
+    color:white;
+    background:var(--accent);
+    box-shadow: 5px 5px 10px rgba(0,0,0,0.3);
+    cursor:pointer;
+}

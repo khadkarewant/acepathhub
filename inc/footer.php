@@ -1,6 +1,6 @@
 </div><!-- /#main-content -->
 
-<?php if (!isset($_SESSION['user_id'])): ?>
+<?php if (!isset($_SESSION['id'])): ?>
 
 <footer class="footer">
     <div class="container">
