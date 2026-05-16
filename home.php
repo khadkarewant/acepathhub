@@ -22,7 +22,7 @@
                 <h4 style="color:var(--primary);">Today's Stats:</h4>
                 <div class="info_card">
                     <?php
-                        $get_data = mysqli_query($conn, "SELECT COUNT(*) AS cnt FROM users WHERE DATE(created_at) = CURDATE()");
+                        $get_data = mysqli_query($conn, "SELECT COUNT(*) AS cnt FROM users WHERE registered_on = CURDATE()");
                         $row = mysqli_fetch_assoc($get_data);
                         echo '<h1>' . $row['cnt'] . '</h1><div>New Users</div>';
                     ?>
