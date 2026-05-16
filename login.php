@@ -72,7 +72,7 @@ if (isset($_POST["sign_in"])) {
         // ===== 2. FETCH USER =====
 
             $stmt = mysqli_prepare($conn, "
-                SELECT user_id, password, first_login, type
+                SELECT user_id, password, first_login, role
                 FROM users
                 WHERE username = ?
                 LIMIT 1
@@ -84,7 +84,7 @@ if (isset($_POST["sign_in"])) {
 
                 mysqli_stmt_bind_param($stmt, "s", $username);
                 mysqli_stmt_execute($stmt);
-                mysqli_stmt_bind_result($stmt, $user_id, $db_pass,$first_login, $type);
+                mysqli_stmt_bind_result($stmt, $user_id, $db_pass,$first_login, $role);
                 $has_user = mysqli_stmt_fetch($stmt);
                 mysqli_stmt_close($stmt);
 
@@ -98,7 +98,7 @@ if (isset($_POST["sign_in"])) {
 
                     $_SESSION['id'] = (int)$user_id;
                     $_SESSION['token'] = $token;
-                    $_SESSION['type'] = $type;
+                    $_SESSION['role'] = (int)$role;
 
                     $token_time = date('Y-m-d H:i:s');
                     $is_session = 1;

@@ -21,7 +21,6 @@ session_start();
 require_once __DIR__ . '/../config/csrf.php';
 require_once __DIR__ . '/../config/roles.php';
 
-
 // Redirect if user not logged in
 if (!isset($_SESSION['id']) || empty($_SESSION['id'])) {
     header("Location: login.php");
@@ -34,7 +33,7 @@ $user_id = $_SESSION['id'];
 $stmt = mysqli_prepare($conn,
     "SELECT user_id, username, first_name, middle_name, last_name,
         email, phone, pin, dob, gender, country, city,
-        postal_code, type, status, last_login,
+        postal_code, role, status, last_login,
         referral_code, is_session, session_token
     FROM users
     WHERE user_id = ?
@@ -68,8 +67,9 @@ if ((int)$row['is_session'] !== 1 || !isset($_SESSION['token']) || !hash_equals(
 
 // ===================== User Data =====================
 $user = $row;
-$user['type'] = (int)$row['type'];
-$role = $user['type'];
+$user['role'] = (int)$row['role'];
+$role = $user['role'];
+$_SESSION['role'] = $role;
 
 $incomplete_fields = array_filter([
     $user['gender'],
