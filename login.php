@@ -155,10 +155,10 @@ if (isset($_POST["sign_in"])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sign-in</title>
-    <?php include("src/inc/links.php"); ?>
+    <?php include("inc/links.php"); ?>
 </head>
 <body>
-    <?php include("src/inc/header.php"); ?>
+    <?php include("inc/header.php"); ?>
 
     <div class="container-fluid">
         <div class="row">
@@ -192,7 +192,7 @@ if (isset($_POST["sign_in"])) {
         </div>
     </div>
 
-    <?php include("src/inc/footer.php"); ?>
+    <?php include("inc/footer.php"); ?>
 
     <!-- Show popup message if exists -->
     <?php if(!empty($msg)): ?>

@@ -156,12 +156,6 @@ if(isset($_POST['submit']) && $_POST['submit'] === "student_registration"){
 
     <?php include("inc/links.php"); ?>
 
-    <style>
-        body {
-            font-family: 'Times New Roman', Times, serif;
-            background: #f8f9fa;
-        }
-    </style>
 </head>
 <body>
     <?php include("inc/header.php"); ?>
