@@ -1,13 +1,13 @@
-<?php $user_id = $_SESSION['user_id'] ?? null; ?>
+<?php $user_id = $_SESSION['id'] ?? null; ?>
 
 <!-- Fixed Navbar -->
 <nav id="navbar">
     <div id="navbar-left">
         <button id="side_panel_icon" aria-label="Toggle sidebar">&#9776;</button>
-        <a href="<?= isset($_SESSION['user_id']) ? 'home.php' : 'index.php' ?>" id="navbar-brand">AcePath Hub</a>
+        <a href="<?= isset($_SESSION['id']) ? 'home.php' : 'index.php' ?>" id="navbar-brand">AcePath Hub</a>
     </div>
     <div id="navbar-right">
-        <?php if (isset($_SESSION['user_id'])): ?>
+        <?php if (isset($_SESSION['id'])): ?>
             <a href="notification.php" id="notif-link" title="Notifications">
                 <i class="fa-solid fa-bell"></i>
                 <?php
@@ -46,7 +46,7 @@
 
         <!-- Dashboard -->
         <div class="side-links">
-            <a href="<?= isset($_SESSION['user_id']) ? 'home.php' : 'index.php' ?>">
+            <a href="<?= isset($_SESSION['id']) ? 'home.php' : 'index.php' ?>">
                 <i class="fa-solid fa-gauge"></i> Dashboard
             </a>
         </div>
@@ -166,7 +166,7 @@
         <?php endif; ?>
 
         <!-- COMMON — logged in -->
-        <?php if (isset($_SESSION['user_id'])): ?>
+        <?php if (isset($_SESSION['id'])): ?>
             <div class="side-links">
                 <a href="profile.php"><i class="fa-solid fa-user"></i> My Profile</a>
             </div>
