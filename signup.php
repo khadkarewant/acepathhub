@@ -139,6 +139,8 @@ if(isset($_POST['submit']) && $_POST['submit'] === "student_registration"){
 
                 header("Location: login.php?msg=" . urlencode("Account created successfully. Please login.")); 
                 exit;
+            } else {
+                $errors['general'] = "Registration failed. Please try again.";
             }
             $stmt->close();
         }
