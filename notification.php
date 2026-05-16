@@ -1,81 +1,74 @@
 <?php
-    include("src/db/db_conn.php");
-    include("src/db/session.php");
-    include("src/db/privileges.php");
-    require_once "src/security/csrf.php";
+    require_once "src/db/db_conn.php";
+    require_once "src/db/session.php";
 
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['mark_read'])) {
+    csrf_verify();
+    $stmt = mysqli_prepare($conn, "UPDATE notification SET is_read = 1 WHERE user_id = ?");
+    mysqli_stmt_bind_param($stmt, 'i', $user_id);
+    mysqli_stmt_execute($stmt);
+    mysqli_stmt_close($stmt);
+    header("Location: notification.php");
+    exit;
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Notification</title>
-    <?php
-        include("src/inc/links.php");
-    ?>
+    <title>Notifications — AcePath Hub</title>
+
+    <?php include("inc/links.php"); ?>
+
 </head>
+
 <body>
-    <?php
-       include("src/inc/header.php");
-    ?>
+    <?php include("inc/header.php"); ?>
 
     <div class="container">
         <div class="row">
             <div class="col-md-12 p-2">
-                <h3 style="color:var(--primary)">Notification:</h3>
-                <?php
-                    if($modify_notification == "true"){
-                        ?>
-                        <form method="POST" action="mark-read-notification.php" style="display:inline;">
-                            <?= csrf_input(); ?>
-                            <button type="submit" class="btn text-light" style="background:var(--primary);">
-                                Mark read
-                            </button>
-                        </form>
-                        <?php
-                    }
-                ?>
+                <h3 style="color:var(--accent)">Notification:</h3>
+
+                <form method="POST" style="display:inline;">
+                    <?= csrf_input(); ?>
+                    <input type="hidden" name="mark_read" value="1">
+                    <button type="submit" class="btn" style="background:var(--accent);color:#0a0a0f;">
+                        Mark All Read
+                    </button>
+                </form>
+
             </div>
             <div class="col-md-12 rounded p-2 mb-3" style="background:rgba(22, 89, 235, 0.2)">
          
-                <?php  
-                    $group_by_date = mysqli_query($conn, "SELECT * FROM `notification` WHERE `user_id` = '".$user_id."' GROUP BY `date` ORDER BY `date` DESC ");
-                    foreach ($group_by_date as $key => $value) {
+            <?php  
+                $stmt = mysqli_prepare($conn, "SELECT DISTINCT date FROM notification WHERE user_id = ? ORDER BY date DESC");
+                mysqli_stmt_bind_param($stmt, 'i', $user_id);
+                mysqli_stmt_execute($stmt);
+                $dates = mysqli_stmt_get_result($stmt);
 
-                        echo'
-                            <div class="btn p-1 mt-1 mb-1" style="background:var(--primary);color:white; display:inline-block;">'.$value['date'].'</div>
-                        '; 
-
-                        $get_notice_data = mysqli_query($conn, "SELECT * FROM `notification` WHERE `user_id` = '".$user_id."' AND `date` ='".$value['date']."' ORDER BY `id` DESC LIMIT 50");
-                
-                        if(mysqli_num_rows($get_notice_data)>0){
-                            while ($row = mysqli_fetch_assoc($get_notice_data)) {
-                                if($row['status'] == "unread"){
-                                    echo'
-                                        <div class="rounded p-1 bg-secondary text-light">'.$row['notification'].'('.$row['time'].')</div>
-
-                                    ';
-                                }else{
-                                    echo'
-                                    <div class="rounded p-1">'.$row['notification'].'('.$row['time'].')</div>
-                                    ';
-                                }
-                            }
-                        } 
-
-                        echo'
-                        ';
-
-
-                    }          
-                ?>  
+                while ($d = mysqli_fetch_assoc($dates)) {
+                    echo '<div class="btn p-1 mt-1 mb-1" style="background:var(--accent);color:#0a0a0f;">' . $d['date'] . '</div>';
+                    
+                    $stmt2 = mysqli_prepare($conn, "SELECT * FROM notification WHERE user_id = ? AND date = ? ORDER BY id DESC LIMIT 50");
+                    mysqli_stmt_bind_param($stmt2, 'is', $user_id, $d['date']);
+                    mysqli_stmt_execute($stmt2);
+                    $notices = mysqli_stmt_get_result($stmt2);
+                    
+                    while ($n = mysqli_fetch_assoc($notices)) {
+                        $class = $n['is_read'] == 0 ? 'bg-secondary text-light' : '';
+                        echo '<div class="rounded p-1 ' . $class . '">' . htmlspecialchars($n['notification']) . ' (' . $n['time'] . ')</div>';
+                    }
+                    mysqli_stmt_close($stmt2);
+                }
+                mysqli_stmt_close($stmt);
+            ?>  
             </div>
         </div>
     </div>
     
-    <?php
-        include("src/inc/footer.php");
-    ?>
+    <?php include("inc/footer.php"); ?>
+    
 </body>
 </html>
