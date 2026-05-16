@@ -1,6 +1,7 @@
 <?php
 require_once("src/db/db_conn.php");
-require_once("src/security/public_bootstrap.php");
+require_once("src/config/public_bootstrap.php");
+require_once("src/config/roles.php");
 
 // Basic session-based signup throttling
 if (!isset($_SESSION['signup_attempts'])) {
@@ -102,10 +103,12 @@ if(isset($_POST['submit']) && $_POST['submit'] === "student_registration"){
             $password_hashed = password_hash($password, PASSWORD_DEFAULT);
 
             // Insert new user
-            $stmt = $conn->prepare("INSERT INTO `users`(`username`,`first_name`,`middle_name`,`last_name`,`email`,`phone`,`password`,`registered_on`,`registered_at`,`referral_code`,`referral_by`) VALUES (?,?,?,?,?,?,?,?,?,?,?)");
+            $stmt = $conn->prepare("INSERT INTO `users`(`username`,`first_name`,`middle_name`,`last_name`,`email`,`phone`,`password`,`type`,`status`,`registered_on`,`registered_at`,`referral_code`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)");
             $date = date("Y-m-d");
             $time = date("H:i:s");
-            $stmt->bind_param("sssssssssss", $username, $first_name, $middle_name, $last_name, $email, $phone, $password_hashed, $date, $time, $referral_code, $referral_by);
+            $role = ROLE_STUDENT;
+            $status = 'active';
+            $stmt->bind_param("sssssssissss", $username, $first_name, $middle_name, $last_name, $email, $phone, $password_hashed, $role, $status, $date, $time, $referral_code);
             if($stmt->execute()){
                 $student_id = $stmt->insert_id;
 
@@ -120,19 +123,19 @@ if(isset($_POST['submit']) && $_POST['submit'] === "student_registration"){
                 $stmt_notif->close();
 
                 // Add free demo set
-                $stmt_demo = $conn->prepare("INSERT INTO `purchased_products`(`user_id`,`product_id`,`amount`,`remaining_sets`,`txn_no`,`txn_mode`,`refrence_no`,`purchased_on`,`purchased_at`,`mobile`,`status`,`created_by`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)");
-                $product_id = 11;
-                $amount = 0;
-                $remaining_sets = 1;
-                $txn_no = $student_id;
-                $txn_mode = 'free';
-                $refrence_no = "FREE-DEMO.$student_id";
-                $mobile = '0000000000';
-                $status = 'active';
-                $created_by = 1;
-                $stmt_demo->bind_param("iiiisssssssi",$student_id,$product_id,$amount,$remaining_sets,$txn_no,$txn_mode,$refrence_no,$date,$time,$mobile,$status,$created_by);
-                $stmt_demo->execute();
-                $stmt_demo->close();
+                // $stmt_demo = $conn->prepare("INSERT INTO `purchased_products`(`user_id`,`product_id`,`amount`,`remaining_sets`,`txn_no`,`txn_mode`,`refrence_no`,`purchased_on`,`purchased_at`,`mobile`,`status`,`created_by`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)");
+                // $product_id = 11;
+                // $amount = 0;
+                // $remaining_sets = 1;
+                // $txn_no = $student_id;
+                // $txn_mode = 'free';
+                // $refrence_no = "FREE-DEMO.$student_id";
+                // $mobile = '0000000000';
+                // $status = 'active';
+                // $created_by = 1;
+                // $stmt_demo->bind_param("iiiisssssssi",$student_id,$product_id,$amount,$remaining_sets,$txn_no,$txn_mode,$refrence_no,$date,$time,$mobile,$status,$created_by);
+                // $stmt_demo->execute();
+                // $stmt_demo->close();
 
                 header("Location: login.php?msg=" . urlencode("Account created successfully. Please login.")); 
                 exit;
@@ -143,20 +146,13 @@ if(isset($_POST['submit']) && $_POST['submit'] === "student_registration"){
 }
 ?>
 
-<?php
-// Dynamic metadata
-$page_title = "Signup | QuizMania";
-$page_description = "Register on QuizMania to start preparing for Lok Sewa Aayog exams with mock tests, unlimited MCQs, instant results, and free demo tests.";
-$page_url = "https://quizmania.org" . $_SERVER['REQUEST_URI'];
-$page_image = "https://quizmania.org/src/img/lsw.png";
-?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <?php include("src/inc/links.php"); ?>
+    <?php include("inc/links.php"); ?>
 
     <style>
         body {
@@ -166,7 +162,7 @@ $page_image = "https://quizmania.org/src/img/lsw.png";
     </style>
 </head>
 <body>
-    <?php include("src/inc/header.php"); ?>
+    <?php include("inc/header.php"); ?>
 
     <div class="container-fluid">
         <div class="row">
@@ -262,6 +258,6 @@ $page_image = "https://quizmania.org/src/img/lsw.png";
 </script>
 
 
-    <?php include("src/inc/footer.php"); ?>
+    <?php include("inc/footer.php"); ?>
 </body>
 </html>
