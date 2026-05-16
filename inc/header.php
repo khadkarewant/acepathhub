@@ -11,11 +11,12 @@
             <a href="notification.php" id="notif-link" title="Notifications">
                 <i class="fa-solid fa-bell"></i>
                 <?php
-                    $stmt = $conn->prepare("SELECT notif_id FROM notifications WHERE user_id = ? AND is_read = 0 LIMIT 1");
-                    $stmt->bind_param('i', $user_id);
-                    $stmt->execute();
-                    if ($stmt->get_result()->num_rows > 0) echo '<span class="notif-dot"></span>';
-                    $stmt->close();
+                    $stmt = mysqli_prepare($conn, "SELECT notif_id FROM notification WHERE user_id = ? AND is_read = 0 LIMIT 1");
+                    mysqli_stmt_bind_param($stmt, 'i', $user_id);
+                    mysqli_stmt_execute($stmt);
+                    $result = mysqli_stmt_get_result($stmt);
+                    if (mysqli_num_rows($result) > 0) echo '<span class="notif-dot"></span>';
+                    mysqli_stmt_close($stmt);
                 ?>
             </a>
             <div class="profile_menu" id="profile-menu">
