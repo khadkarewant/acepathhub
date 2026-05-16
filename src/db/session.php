@@ -19,25 +19,26 @@ session_set_cookie_params([
 
 session_start();
 require_once __DIR__ . '/../config/csrf.php';
+require_once __DIR__ . '/../config/roles.php';
 
 
 // Redirect if user not logged in
-if (!isset($_SESSION['user_id']) || empty($_SESSION['user_id'])) {
+if (!isset($_SESSION['id']) || empty($_SESSION['id'])) {
     header("Location: login.php");
     exit;
 }
 
-$user_id = $_SESSION['user_id'];
+$user_id = $_SESSION['id'];
 
 // Fetch user data and validate session token
 $stmt = mysqli_prepare($conn,
     "SELECT user_id, username, first_name, middle_name, last_name,
-            email, phone, pin, dob, gender, country, city,
-            postal_code, role, status, last_login_on, last_login_at,
-            referral_code, is_session, session_token
-     FROM users
-     WHERE user_id = ?
-     LIMIT 1"
+        email, phone, pin, dob, gender, country, city,
+        postal_code, type, status, last_login,
+        referral_code, is_session, session_token
+    FROM users
+    WHERE user_id = ?
+    LIMIT 1"
 );
 if (!$stmt) {
     session_destroy();
@@ -58,7 +59,7 @@ $row = mysqli_fetch_assoc($result);
 mysqli_stmt_close($stmt);
 
 // Check if session is valid (single-device login)
-if ($row['is_session'] !== 1 || !isset($_SESSION['session_token']) || !hash_equals($row['session_token'], $_SESSION['session_token'])) {
+if ((int)$row['is_session'] !== 1 || !isset($_SESSION['token']) || !hash_equals($row['session_token'], $_SESSION['token'])) {
     // Invalid session → force logout
     session_destroy();
     header("Location: login.php?msg=Session expired");
@@ -67,8 +68,8 @@ if ($row['is_session'] !== 1 || !isset($_SESSION['session_token']) || !hash_equa
 
 // ===================== User Data =====================
 $user = $row;
-$user['role'] = (int)$row['role'];
-$role = $user['role'];
+$user['type'] = (int)$row['type'];
+$role = $user['type'];
 
 $incomplete_fields = array_filter([
     $user['gender'],

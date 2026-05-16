@@ -1,7 +1,8 @@
 <?php
 
 include("src/db/db_conn.php");
-require_once("src/security/public_bootstrap.php");
+require_once("src/config/public_bootstrap.php");
+require_once("src/config/roles.php");
 
 
 $error_msg = "";
@@ -49,81 +50,99 @@ if (isset($_POST["sign_in"])) {
 
     if ($attempt_count >= $max_attempts) {
         $error_msg = "Too many failed attempts. Try again later.";
-    } else {
+    }
+     else {
+         // IP THROTTLE
+        $ip = $_SERVER['REMOTE_ADDR'];
+        $max_ip_attempts = 20;
+
+        $stmt = mysqli_prepare($conn,
+            'SELECT COUNT(*) FROM login_attempts WHERE ip_address = ? AND attempt_time > ?'
+        );
+        mysqli_stmt_bind_param($stmt, 'si', $ip, $time_limit);
+        mysqli_stmt_execute($stmt);
+        mysqli_stmt_bind_result($stmt, $ip_count);
+        mysqli_stmt_fetch($stmt);
+        mysqli_stmt_close($stmt);
+
+        if ($ip_count >= $max_ip_attempts) {
+            $error_msg = 'Too many attempts from your network. Try again later.';
+        } else {
 
         // ===== 2. FETCH USER =====
 
-        $stmt = mysqli_prepare($conn, "
-            SELECT user_id, password, first_login_on, first_login_at, type
-            FROM users
-            WHERE username = ?
-            LIMIT 1
-        ");
+            $stmt = mysqli_prepare($conn, "
+                SELECT user_id, password, first_login, type
+                FROM users
+                WHERE username = ?
+                LIMIT 1
+            ");
 
-        if (!$stmt) {
-            $error_msg = "Login temporarily unavailable.";
-        } else {
-
-            mysqli_stmt_bind_param($stmt, "s", $username);
-            mysqli_stmt_execute($stmt);
-            mysqli_stmt_bind_result($stmt, $user_id, $db_pass, $first_login_on, $first_login_at, $type);
-            $has_user = mysqli_stmt_fetch($stmt);
-            mysqli_stmt_close($stmt);
-
-            if ($has_user && password_verify($password, $db_pass)) {
-
-                // SUCCESS
-                session_regenerate_id(true);
-                unset($_SESSION['csrf_token']);
-
-                $token = bin2hex(random_bytes(32));
-
-                $_SESSION['id'] = (int)$user_id;
-                $_SESSION['token'] = $token;
-                $_SESSION['type'] = $type;
-
-                $token_time = time();
-                $is_session = 'true';
-                $uid = (int)$user_id;
-
-                $stmt = mysqli_prepare($conn, "
-                    UPDATE users
-                    SET session_token = ?, session_token_time = ?, is_session = ?
-                    WHERE user_id = ?
-                ");
-
-                if ($stmt) {
-                    mysqli_stmt_bind_param($stmt, "sisi", $token, $token_time, $is_session, $uid);
-                    mysqli_stmt_execute($stmt);
-                    mysqli_stmt_close($stmt);
-                }
-
-                // CLEAR FAILED ATTEMPTS
-                $stmt = mysqli_prepare($conn, "
-                    DELETE FROM login_attempts WHERE username = ?
-                ");
-                mysqli_stmt_bind_param($stmt, "s", $username);
-                mysqli_stmt_execute($stmt);
-                mysqli_stmt_close($stmt);
-
-                header("Location: home.php");
-                exit;
-
+            if (!$stmt) {
+                $error_msg = "Login temporarily unavailable.";
             } else {
 
-                // FAILED LOGIN — RECORD ATTEMPT
-                $now = time();
-
-                $stmt = mysqli_prepare($conn, "
-                    INSERT INTO login_attempts (username, attempt_time)
-                    VALUES (?, ?)
-                ");
-
-                mysqli_stmt_bind_param($stmt, "si", $username, $now);
+                mysqli_stmt_bind_param($stmt, "s", $username);
                 mysqli_stmt_execute($stmt);
+                mysqli_stmt_bind_result($stmt, $user_id, $db_pass,$first_login, $type);
+                $has_user = mysqli_stmt_fetch($stmt);
                 mysqli_stmt_close($stmt);
 
-                $error_msg = "Invalid credential.";
+                if ($has_user && password_verify($password, $db_pass)) {
+
+                    // SUCCESS
+                    session_regenerate_id(true);
+                    unset($_SESSION['csrf_token']);
+
+                    $token = bin2hex(random_bytes(32));
+
+                    $_SESSION['id'] = (int)$user_id;
+                    $_SESSION['token'] = $token;
+                    $_SESSION['type'] = $type;
+
+                    $token_time = date('Y-m-d H:i:s');
+                    $is_session = 1;
+                    $uid = (int)$user_id;
+
+                    $stmt = mysqli_prepare($conn, "
+                        UPDATE users
+                        SET session_token = ?, session_token_time = ?, is_session = ?
+                        WHERE user_id = ?
+                    ");
+
+                    if ($stmt) {
+                        mysqli_stmt_bind_param($stmt, "ssii", $token, $token_time, $is_session, $uid);
+                        mysqli_stmt_execute($stmt);
+                        mysqli_stmt_close($stmt);
+                    }
+
+                    // CLEAR FAILED ATTEMPTS
+                    $stmt = mysqli_prepare($conn, "
+                        DELETE FROM login_attempts WHERE username = ?
+                    ");
+                    mysqli_stmt_bind_param($stmt, "s", $username);
+                    mysqli_stmt_execute($stmt);
+                    mysqli_stmt_close($stmt);
+
+                    header("Location: home.php");
+                    exit;
+
+                } else {
+
+                    // FAILED LOGIN — RECORD ATTEMPT
+                    $now = time();
+
+                    $stmt = mysqli_prepare($conn, "
+                        INSERT INTO login_attempts (username, ip_address, attempt_time)
+                        VALUES (?, ?, ?)
+                    ");
+
+                    mysqli_stmt_bind_param($stmt, "ssi", $username, $ip, $now);
+                    mysqli_stmt_execute($stmt);
+                    mysqli_stmt_close($stmt);
+
+                    $error_msg = "Invalid credential.";
+                }
             }
         }
     }
