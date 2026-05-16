@@ -41,7 +41,7 @@ CREATE TABLE IF NOT EXISTS `users` (
   `dob`                DATE             DEFAULT NULL,
   `password`           VARCHAR(255)     NOT NULL,
   `pin`                VARCHAR(255)     DEFAULT NULL,
-  `type`               TINYINT UNSIGNED NOT NULL DEFAULT 2,
+  `role`               TINYINT UNSIGNED NOT NULL DEFAULT 2,
   `registered_on`      DATE             NOT NULL,
   `registered_at`      TIME             NOT NULL,
   `first_login`        DATETIME         DEFAULT NULL,
@@ -84,6 +84,20 @@ CREATE TABLE IF NOT EXISTS `login_attempts` (
   DEFAULT CHARSET=utf8mb4
   COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS `notification` (
+  `id`           INT(11)      NOT NULL AUTO_INCREMENT,
+  `user_id`      INT(11)      NOT NULL,
+  `notification` VARCHAR(250) NOT NULL,
+  `date`         DATE         NOT NULL,
+  `time`         TIME         NOT NULL,
+  `is_read`      TINYINT(1)   NOT NULL DEFAULT 0,
+
+  PRIMARY KEY (`id`),
+  INDEX `idx_user_id` (`user_id`)
+
+) ENGINE=InnoDB
+  DEFAULT CHARSET=utf8mb4
+  COLLATE=utf8mb4_unicode_ci;
 -- ============================================================================
 -- DAY 3 — add tables here
 -- ============================================================================
@@ -115,7 +129,7 @@ CREATE TABLE IF NOT EXISTS `login_attempts` (
 -- Then:
 --   UPDATE users SET password = '<output>' WHERE username = 'admin';
 
-INSERT INTO `users` (
+INSERT IGNORE INTO `users` (
   `username`, `first_name`, `last_name`,
   `email`, `phone`,
   `password`,
