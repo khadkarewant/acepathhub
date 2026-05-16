@@ -103,7 +103,7 @@ if(isset($_POST['submit']) && $_POST['submit'] === "student_registration"){
             $password_hashed = password_hash($password, PASSWORD_DEFAULT);
 
             // Insert new user
-            $stmt = $conn->prepare("INSERT INTO `users`(`username`,`first_name`,`middle_name`,`last_name`,`email`,`phone`,`password`,`type`,`status`,`registered_on`,`registered_at`,`referral_code`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)");
+            $stmt = $conn->prepare("INSERT INTO `users`(`username`,`first_name`,`middle_name`,`last_name`,`email`,`phone`,`password`,`role`,`status`,`registered_on`,`registered_at`,`referral_code`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)");
             $date = date("Y-m-d");
             $time = date("H:i:s");
             $role = ROLE_STUDENT;
