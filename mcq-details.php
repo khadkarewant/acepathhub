@@ -82,11 +82,31 @@ mysqli_stmt_close($stmt);
                     <?= csrf_input() ?>
                     <input type="hidden" name="question_set_id" value="<?= $question_set_id ?>">
                     <button type="submit" class="btn-qs-gold"
-                            onclick="return confirm('Verify this set and publish?')">
-                        Verify &amp; publish
+                            onclick="return confirm('Verify this set ?')">
+                        Verify
                     </button>
                 </form>
-            <?php endif; ?>
+            <?php elseif ($set['verified'] == 1 && $set['status'] === 'draft'): ?>
+            <form method="POST" action="mcq-status-change.php">
+                <?= csrf_input() ?>
+                <input type="hidden" name="question_set_id" value="<?= $question_set_id ?>">
+                <input type="hidden" name="status" value="published">
+                <button type="submit" class="btn-qs-gold"
+                        onclick="return confirm('Publish this set?')">
+                    Publish
+                </button>
+            </form>
+            <?php elseif ($set['verified'] == 1 && $set['status'] === 'published'): ?>
+            <form method="POST" action="mcq-status-change.php">
+                <?= csrf_input() ?>
+                <input type="hidden" name="question_set_id" value="<?= $question_set_id ?>">
+                <input type="hidden" name="status" value="draft">
+                <button type="submit" class="btn-qs-gold"
+                        onclick="return confirm('Unpublish this set?')">
+                    Unpublish
+                </button>
+            </form>
+        <?php endif; ?>
         </div>
     </div>
 

@@ -12,16 +12,15 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 csrf_verify();
 
 $question_set_id = filter_input(INPUT_POST, 'question_set_id', FILTER_VALIDATE_INT);
-$status          = $_POST['status'] ?? '';
 
-if (!$question_set_id || !in_array($status, ['draft', 'published'], true)) {
+if (!$question_set_id) {
     header('Location: home.php');
     exit;
 }
 
-// Confirm set exists and is verified (only verified sets can be status-toggled)
+// Confirm set exists and is unverified
 $stmt = mysqli_prepare($conn,
-    'SELECT topic_id FROM question_sets WHERE id = ? AND verified = 1');
+    'SELECT topic_id FROM question_sets WHERE id = ? AND verified = 0');
 mysqli_stmt_bind_param($stmt, 'i', $question_set_id);
 mysqli_stmt_execute($stmt);
 $res = mysqli_stmt_get_result($stmt);
@@ -36,20 +35,17 @@ if (!$set) {
 
 $topic_id = (int)$set['topic_id'];
 
+// Set verified=1, status stays draft
 $stmt = mysqli_prepare($conn,
-    'UPDATE question_sets SET status = ? WHERE id = ?');
-mysqli_stmt_bind_param($stmt, 'si', $status, $question_set_id);
+    'UPDATE question_sets SET verified = 1 WHERE id = ?');
+mysqli_stmt_bind_param($stmt, 'i', $question_set_id);
 $ok = mysqli_stmt_execute($stmt);
 mysqli_stmt_close($stmt);
 
 if (!$ok) {
-    header('Location: draft-mcq-details.php?topic_id=' . $topic_id . '&err=1');
+    header('Location: unverified-mcq-details.php?topic_id=' . $topic_id . '&err=1');
     exit;
 }
 
-if ($status === 'published') {
-    header('Location: question-set-list.php?topic_id=' . $topic_id . '&ok=1');
-} else {
-    header('Location: draft-mcq-details.php?topic_id=' . $topic_id . '&ok=1');
-}
+header('Location: unverified-mcq-details.php?topic_id=' . $topic_id . '&ok=1');
 exit;
