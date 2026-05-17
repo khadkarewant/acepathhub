@@ -1,7 +1,11 @@
 <?php
 require_once "src/db/db_conn.php";
 require_once "src/db/session.php";
-require_role(ROLE_ADMIN);
+
+if (!has_role(ROLE_ADMIN) && !has_role(ROLE_DATA_ENTRY)) {
+    header("Location: home.php");
+    exit;
+}
 
 $created = isset($_GET['created']);
 
