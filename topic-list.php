@@ -84,8 +84,15 @@ mysqli_stmt_close($stmt);
                         <td><?= $sn++ ?></td>
                         <td><?= htmlspecialchars($row['name'], ENT_QUOTES, 'UTF-8') ?></td>
                         <td>
-                            <a href="question-set-list.php?topic_id=<?= (int)$row['id'] ?>"
-                               class="btn btn-sm btn-outline-warning">View MCQs</a>
+                            <?php if (has_role(ROLE_ADMIN)): ?>
+                                <a href="question-set-list.php?topic_id=<?= (int)$row['id'] ?>"
+                                class="btn btn-sm btn-outline-warning">View MCQs</a>
+                            <?php endif; ?>
+
+                            <?php if (has_role(ROLE_DATA_ENTRY)): ?>
+                                <a href="mcq-add.php?topic_id=<?= (int)$row['id'] ?>"
+                                class="btn btn-sm btn-outline-warning">Add MCQ</a>
+                            <?php endif; ?>
                         </td>
                     </tr>
                 <?php endforeach;
