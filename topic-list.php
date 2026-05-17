@@ -78,8 +78,8 @@ mysqli_stmt_close($stmt);
                         <td><?= $sn++ ?></td>
                         <td><?= htmlspecialchars($row['name'], ENT_QUOTES, 'UTF-8') ?></td>
                         <td>
-                            <a href="question-set-add.php?topic_id=<?= (int)$row['id'] ?>"
-                               class="btn btn-sm btn-outline-warning">Add MCQ</a>
+                            <a href="question-set-list.php?topic_id=<?= (int)$row['id'] ?>"
+                               class="btn btn-sm btn-outline-warning">View MCQs</a>
                         </td>
                     </tr>
                 <?php endforeach;
