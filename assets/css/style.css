@@ -540,3 +540,6 @@ label { font-weight: 700; }
     padding: 1rem;
     margin-bottom: 1.5rem;
 }
+.text-muted {
+    color: #888 !important;
+}
