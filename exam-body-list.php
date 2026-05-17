@@ -28,10 +28,12 @@ mysqli_free_result($result);
         <div class="col-md-12 table-responsive">
             <div class="d-flex justify-content-between align-items-center my-3">
                 <h3 style="color:var(--accent);">Exam Bodies</h3>
-                <a href="exam-body-add.php" class="btn"
-                   style="background:var(--accent);color:#0a0a0f;font-weight:600;">
-                    + Add Exam Body
-                </a>
+                <?php if (has_role(ROLE_ADMIN)): ?>
+                    <a href="exam-body-add.php" class="btn"
+                    style="background:var(--accent);color:#0a0a0f;font-weight:600;">
+                        + Add Exam Body
+                    </a>
+                <?php endif; ?>
             </div>
             <?php if ($created): ?>
                 <div class="alert alert-success">Exam body added successfully.</div>

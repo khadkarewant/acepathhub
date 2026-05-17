@@ -55,10 +55,12 @@ mysqli_stmt_close($stmt);
                 </h3>
                 <div>
                     <a href="subject-list.php?exam_body_id=<?= $subject_id ?>" class="btn btn-sm btn-outline-secondary me-2">Back</a>
-                    <a href="topic-add.php?subject_id=<?= $subject_id ?>" class="btn btn-sm"
-                       style="background:var(--accent);color:#0a0a0f;font-weight:600;">
-                        + Add Topic
-                    </a>
+                    <?php if (has_role(ROLE_ADMIN)): ?>
+                        <a href="topic-add.php?subject_id=<?= $subject_id ?>" class="btn btn-sm"
+                        style="background:var(--accent);color:#0a0a0f;font-weight:600;">
+                            + Add Topic
+                        </a>
+                    <?php endif; ?>
                 </div>
             </div>
 

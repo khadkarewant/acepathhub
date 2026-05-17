@@ -55,10 +55,12 @@ mysqli_stmt_close($stmt);
                 </h3>
                 <div>
                     <a href="exam-body-list.php" class="btn btn-sm btn-outline-secondary me-2">Back</a>
-                    <a href="subject-add.php?exam_body_id=<?= $exam_body_id ?>" class="btn btn-sm"
-                       style="background:var(--accent);color:#0a0a0f;font-weight:600;">
-                        + Add Subject
-                    </a>
+                    <?php if (has_role(ROLE_ADMIN)): ?>
+                        <a href="subject-add.php?exam_body_id=<?= $exam_body_id ?>" class="btn btn-sm"
+                        style="background:var(--accent);color:#0a0a0f;font-weight:600;">
+                            + Add Subject
+                        </a>
+                    <?php endif; ?>
                 </div>
             </div>
 
