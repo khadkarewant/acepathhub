@@ -57,7 +57,7 @@ $result = mysqli_query($conn, "SELECT id, name FROM exam_bodies ORDER BY id ASC"
                 <?php
                     endwhile;
                 else: ?>
-                    <tr><td colspan="4">No exam bodies found.</td></tr>
+                    <tr><td colspan="3">No exam bodies found.</td></tr>
                 <?php endif; ?>
                 </tbody>
             </table>
