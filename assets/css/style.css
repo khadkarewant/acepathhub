@@ -532,3 +532,11 @@ a {
     box-shadow: 5px 5px 10px rgba(0,0,0,0.3);
     cursor:pointer;
 }
+
+label { font-weight: 700; }
+.question-block {
+    border: 1px solid #333;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+}
