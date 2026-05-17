@@ -1,198 +1,165 @@
 <?php
-    include("src/db/db_conn.php");
-    include("src/db/session.php");
-    include("src/db/privileges.php");
+require_once 'src/db/db_conn.php';
+require_once 'src/db/session.php';
+require_once 'src/config/roles.php';
 
-    if($view_mcq == "false"){
-        header("Location: courses.php");
-    }
-    
-    if(isset($_GET['mcq_id']) && $_GET['mcq_id'] !== ""){
+require_role(ROLE_ADMIN);
 
-        $get_mcq_details = mysqli_query($conn, "SELECT * FROM `mcqs` WHERE `id` = '".$_GET['mcq_id']."' ");
+if (!isset($_GET['question_set_id']) || !ctype_digit($_GET['question_set_id'])) {
+    header('Location: home.php');
+    exit;
+}
+$question_set_id = (int)$_GET['question_set_id'];
 
-        if(mysqli_num_rows($get_mcq_details) == 0){
-            header("Location: home.php");
-        }
+// 1. Fetch question_set + breadcrumb in one query
+$stmt = mysqli_prepare($conn,
+    'SELECT qs.id, qs.source, qs.image_path, qs.passage_text,
+            qs.verified, qs.status, qs.created_by, qs.created_on,
+            qs.past_paper_id, qs.question_no,
+            t.name  AS topic_name,  t.id AS topic_id,
+            s.name  AS subject_name,
+            eb.name AS exam_body_name
+     FROM question_sets qs
+     JOIN topics     t  ON t.id  = qs.topic_id
+     JOIN subjects   s  ON s.id  = t.subject_id
+     JOIN exam_bodies eb ON eb.id = s.exam_body_id
+     WHERE qs.id = ?
+     LIMIT 1');
+mysqli_stmt_bind_param($stmt, 'i', $question_set_id);
+mysqli_stmt_execute($stmt);
+$res = mysqli_stmt_get_result($stmt);
+$set = mysqli_fetch_assoc($res);
+mysqli_free_result($res);
+mysqli_stmt_close($stmt);
 
-        while ($row = mysqli_fetch_assoc($get_mcq_details)) {
-            $question_weight = $row['question_weight'];
-            $mcq_id = $row['id'];
-            $topic_id = $row['topic_id'];
-            // $cover_image =  $row['cover_img'];
-            $created_by = $row['created_by'];
-            $created_on =  $row['created_on'];
-            $created_at =  $row['created_at'];
-            $status = $row['status'];
-            $remarks = $row['remarks'];
-            $verification = $row['verified'];
+if (!$set) {
+    header('Location: home.php');
+    exit;
+}
 
-            $get_topic_name = mysqli_query($conn, "SELECT `name`,`course_id` FROM `topics` WHERE `id` = '".$topic_id."'");
-
-            foreach ($get_topic_name as $key => $value) {
-                $topic_name = $value['name'];
-                $course_id = $value['course_id'];
-            }
-
-            $get_course_name = mysqli_query($conn, "SELECT `name` FROM `courses` WHERE `id` = '".$course_id."'");
-
-            foreach ($get_course_name as $key => $value) {
-                $course_name = $value['name'];
-            }
-
-        }
-
-    }else{
-        header("Location: courses.php");
-    }
+// 2. Fetch all questions for this set
+$stmt = mysqli_prepare($conn,
+    'SELECT id, question, option_a, option_b, option_c, option_d, answer, explanation
+     FROM questions
+     WHERE question_set_id = ?
+     ORDER BY id ASC');
+mysqli_stmt_bind_param($stmt, 'i', $question_set_id);
+mysqli_stmt_execute($stmt);
+$res       = mysqli_stmt_get_result($stmt);
+$questions = mysqli_fetch_all($res, MYSQLI_ASSOC);
+mysqli_free_result($res);
+mysqli_stmt_close($stmt);
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mcq Details</title>
-    <?php
-        include("src/inc/links.php");
-    ?>
+    <title>Set #<?= $question_set_id ?> — <?= htmlspecialchars($set['topic_name']) ?></title>
+    <?php include 'inc/links.php'; ?>
 </head>
 <body>
-    <?php
-        include("src/inc/header.php");
-    ?>
+<?php include 'inc/header.php'; ?>
 
-    <div class="container-fluid">
-        <div class="row">
-            <div class="col-md-12 mt-2 table-responsive">
-                
-                <table class="table table-hovered">
-                    <thead>
-                        <tr>
-                            <th><strong>Course: </strong></th>
-                            <td><?php echo $course_name."(".$course_id.")"; ?></td>
-                        </tr>
-                        <tr>
-                            <th><strong>Topic: </strong></th>
-                            <td><?php echo $topic_name."(".$topic_id.")"; ?></td>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <th> <strong>Remarks: </strong></th>
-                            <td> <?php echo $remarks; ?></td>
-                        </tr>
-                        <tr>
-                            <th> <strong>Total Question:: </strong></th>
-                            <td> <?php echo $question_weight; ?></td>
-                        </tr>
-                    </tbody>
-                </table>
+<div class="container-fluid">
 
-                <?php if ($modify_mcq == "true" && $type == "admin"): ?>
-                    <button class="bg-info" onclick="window.location.href='update-mcq.php?mcq_id=<?php echo (int)$mcq_id; ?>'">
-                        Update MCQ
-                    </button>
-
-                    <form action="delete-mcq.php" method="POST" style="display:inline;">
-                        <?php echo csrf_input(); ?>
-                        <input type="hidden" name="mcq_id" value="<?php echo (int)$mcq_id; ?>">
-                        <button type="submit" class="bg-danger" onclick="return confirm('Delete this MCQ permanently?');">
-                            Delete MCQ
-                        </button>
-                    </form>
-                <?php endif; ?>
-
-                
-                <?php if ($verify_mcq == "true" && $verification == "false"): ?>
-                    <form action="verify-mcq.php" method="POST" style="display:inline;">
-                        <?php echo csrf_input(); ?>
-                        <input type="hidden" name="mcq_id" value="<?php echo (int)$mcq_id; ?>">
-                        <input type="hidden" name="status" value="true">
-                        <button type="submit" class="bg-warning" onclick="return confirm('Verify this MCQ?');">
-                            Verify MCQ
-                        </button>
-                    </form>
-                <?php endif; ?>
-
-                <hr>
-
-                <?php
-                    if($create_mcq == "true"){
-                        echo'
-                            <button class="bg-info" onclick="window.location.href=\'add-question.php?mcq_id='.$mcq_id.'\'">Add Question</button>
-                        ';
-                    }
-                ?>
-
-
-                <h4>Question/s:</h4>
-                <div class="table-responsive">
-                    <table class="table">
-                        <tbody>
-                            <tr>
-                                <th>ID</th>
-                                <th>Question</th>
-                                <th>Opt A</th>
-                                <th>Opt B</th>
-                                <th>Opt C</th>
-                                <th>Opt D</th>
-                                <th>Answer</th>
-
-                                <?php
-                                    if($verification == "true" && $type == "admin"){
-                                        echo'
-                                            <th>Action</th>
-                                        ';
-                                    }
-                                ?>
-                            </tr>
-                            <?php
-                                $get_questions = mysqli_query($conn, "SELECT * FROM `questions` WHERE `mcq_id` = '".$mcq_id."' ");
-                                echo'
-                                ';
-                                while ($row = mysqli_fetch_assoc($get_questions)) {
-                                    echo'
-                                        <tr>
-                                            <td>'.$row['id'].'</td>
-                                            <td> <div class="form-control"> '.$row['question'].'</div></td>
-                                            
-                                            <td>'.$row['option_a'].'</td>
-                                            <td>'.$row['option_b'].'</td>
-                                            <td>'.$row['option_c'].'</td>
-                                            <td>'.$row['option_d'].'</td>
-                                            <td>'.$row['answer'].'</td>
-                                            <td>
-                                    ';
-
-                                    
-                                    if($modify_topic == "true"){
-                                        echo'
-                                            <button onclick="window.location.href=\'update-question.php?question_id='.$row['id'].'\'" style="background:green;color:white;">Update Question</button>
-
-                                        ';
-                                    }
-                                    echo'
-                                            </td>
-                                        </tr>
-                                    ';
-                                }
-                                
-                            ?>
-                        </tbody>
-                    </table>
-                </div>
-                
-                
-               
+    <div class="qs-list-header">
+        <div>
+            <div class="qs-breadcrumb">
+                <?= htmlspecialchars($set['exam_body_name']) ?>
+                &rsaquo; <?= htmlspecialchars($set['subject_name']) ?>
+                &rsaquo; <a href="question-set-list.php?topic_id=<?= $set['topic_id'] ?>">
+                    <?= htmlspecialchars($set['topic_name']) ?>
+                </a>
+                &rsaquo; Set #<?= $question_set_id ?>
             </div>
+            <div class="qs-list-title">Question set details</div>
+        </div>
+
+        <div class="mcqd-actions">
+            <?php if ($set['verified'] == 0): ?>
+                <form method="POST" action="mcq-verify.php">
+                    <?= csrf_input() ?>
+                    <input type="hidden" name="question_set_id" value="<?= $question_set_id ?>">
+                    <button type="submit" class="btn-qs-gold"
+                            onclick="return confirm('Verify this set and publish?')">
+                        Verify &amp; publish
+                    </button>
+                </form>
+            <?php endif; ?>
         </div>
     </div>
-    <br>
-    
-    
 
-    <?php
-        include("src/inc/footer.php");
-    ?>
+    <!-- Set meta -->
+    <div class="mcqd-meta">
+        <span class="badge badge-source-<?= $set['source'] === 'past_paper' ? 'past' : 'practice' ?>">
+            <?= $set['source'] === 'past_paper' ? 'past paper' : 'practice' ?>
+        </span>
+        <span class="badge <?= $set['verified'] ? 'badge-published' : 'badge-unverified' ?>">
+            <?= $set['verified'] ? 'verified' : 'unverified' ?>
+        </span>
+        <span class="badge <?= $set['status'] === 'published' ? 'badge-published' : 'badge-draft' ?>">
+            <?= htmlspecialchars($set['status']) ?>
+        </span>
+        <span class="badge badge-meta"><?= count($questions) ?> question<?= count($questions) != 1 ? 's' : '' ?></span>
+        <?php if ($set['image_path']): ?>
+            <span class="badge badge-meta">image</span>
+        <?php endif; ?>
+        <span class="mcqd-meta-date">
+            added <?= htmlspecialchars($set['created_on']) ?> &middot; user #<?= (int)$set['created_by'] ?>
+        </span>
+    </div>
+
+    <!-- Passage -->
+    <?php if ($set['passage_text']): ?>
+    <div class="mcqd-passage">
+        <div class="mcqd-passage-label">Passage</div>
+        <?= nl2br(htmlspecialchars($set['passage_text'])) ?>
+    </div>
+    <?php endif; ?>
+
+    <!-- Image -->
+    <?php if ($set['image_path']): ?>
+    <div class="mcqd-image">
+        <img src="<?= htmlspecialchars($set['image_path']) ?>" alt="Set image">
+    </div>
+    <?php endif; ?>
+
+    <!-- Questions -->
+    <?php if (empty($questions)): ?>
+        <div class="qs-empty">No questions in this set.</div>
+    <?php else: ?>
+        <?php foreach ($questions as $i => $q):
+            $ans = strtolower(trim($q['answer']));
+        ?>
+        <div class="mcqd-q-card">
+            <div class="mcqd-q-head">
+                <span class="qs-q-num">Q<?= $i + 1 ?></span>
+                <span class="mcqd-q-id">#<?= $q['id'] ?></span>
+            </div>
+            <div class="mcqd-q-body">
+                <div class="mcqd-q-text"><?= htmlspecialchars($q['question']) ?></div>
+                <div class="mcqd-opts">
+                    <?php foreach (['a','b','c','d'] as $opt): ?>
+                    <div class="mcqd-opt <?= $ans === $opt ? 'mcqd-opt-correct' : '' ?>">
+                        <?= strtoupper($opt) ?>. <?= htmlspecialchars($q['option_' . $opt]) ?>
+                        <?= $ans === $opt ? '<span class="mcqd-tick">&#10003;</span>' : '' ?>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+                <?php if ($q['explanation']): ?>
+                <div class="mcqd-expl">
+                    <span class="mcqd-expl-label">Explanation</span>
+                    <?= nl2br(htmlspecialchars($q['explanation'])) ?>
+                </div>
+                <?php endif; ?>
+            </div>
+        </div>
+        <?php endforeach; ?>
+    <?php endif; ?>
+
+</div>
+
+<?php include 'inc/footer.php'; ?>
 </body>
 </html>

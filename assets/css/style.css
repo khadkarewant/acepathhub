@@ -543,3 +543,57 @@ label { font-weight: 700; }
 .text-muted {
     color: #888 !important;
 }
+
+/* ── mcq-details.php ───────────────────────────────────── */
+.mcqd-actions { display: flex; gap: 8px; align-items: center; }
+
+.mcqd-meta {
+    display: flex; flex-wrap: wrap; align-items: center;
+    gap: 6px; margin-bottom: 1rem;
+}
+.mcqd-meta-date { font-size: 11px; color: #555; margin-left: auto; }
+
+.badge-unverified { background: #2e1a0e; color: #e07b39; }
+.badge-draft      { background: #1e1e2e; color: #888; border: 1px solid #2a2a3a; }
+
+.mcqd-passage {
+    font-size: 13px; color: #bbb; line-height: 1.7;
+    background: #12121e; border: 1px solid #2a2a3a;
+    border-radius: 6px; padding: .75rem 1rem; margin-bottom: 1rem;
+}
+.mcqd-passage-label {
+    font-size: 10px; font-weight: 500; color: #555;
+    text-transform: uppercase; letter-spacing: .05em; margin-bottom: .4rem;
+}
+
+.mcqd-image { margin-bottom: 1rem; }
+.mcqd-image img { max-width: 320px; border-radius: 6px; border: 1px solid #2a2a3a; }
+
+.mcqd-q-card {
+    background: #12121e; border: 1px solid #2a2a3a;
+    border-radius: 8px; margin-bottom: 1rem; overflow: hidden;
+}
+.mcqd-q-head {
+    display: flex; align-items: center; gap: 8px;
+    padding: .5rem 1rem; border-bottom: 1px solid #2a2a3a;
+    background: #0d0d18;
+}
+.mcqd-q-id { font-size: 11px; color: #444; font-family: monospace; }
+.mcqd-q-body { padding: .75rem 1rem; }
+.mcqd-q-text { font-size: 13px; color: #d0d0d0; line-height: 1.6; margin-bottom: .6rem; }
+
+.mcqd-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 1rem; margin-bottom: .5rem; }
+.mcqd-opt  { font-size: 13px; color: #777; padding: 2px 0; }
+.mcqd-opt-correct { color: #6abf47; font-weight: 500; }
+.mcqd-tick { margin-left: 4px; }
+
+.mcqd-expl {
+    font-size: 12px; color: #999; line-height: 1.6;
+    background: #0d0d18; border-left: 2px solid #2a2a3a;
+    padding: .4rem .75rem; margin-top: .5rem; border-radius: 0 4px 4px 0;
+}
+.mcqd-expl-label {
+    font-size: 10px; font-weight: 500; color: #555;
+    text-transform: uppercase; letter-spacing: .05em;
+    display: block; margin-bottom: 2px;
+}
