@@ -71,6 +71,20 @@
 
             <div class="side-links">
                 <a href="javascript:void(0)" class="menu-toggle">
+                    <i class="fa-solid fa-building-columns"></i> Exam Bodies &triangledown;
+                </a>
+                <div class="side-submenu">
+                    <div class="side-sublinks">
+                        <a href="exam-body-list.php"><i class="fa-solid fa-list"></i> Exam Body List</a>
+                    </div>
+                    <div class="side-sublinks">
+                        <a href="exam-body-add.php"><i class="fa-solid fa-plus"></i> Add Exam Body</a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="side-links">
+                <a href="javascript:void(0)" class="menu-toggle">
                     <i class="fa-solid fa-box"></i> Products &triangledown;
                 </a>
                 <div class="side-submenu">
