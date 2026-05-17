@@ -6,6 +6,8 @@ require_role(ROLE_ADMIN);
 $created = isset($_GET['created']);
 
 $result = mysqli_query($conn, "SELECT id, name FROM exam_bodies ORDER BY id ASC");
+$exam_bodies = mysqli_fetch_all($result, MYSQLI_ASSOC);
+mysqli_free_result($result);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -17,11 +19,9 @@ $result = mysqli_query($conn, "SELECT id, name FROM exam_bodies ORDER BY id ASC"
 </head>
 <body>
 <?php include("inc/header.php"); ?>
-
 <div class="container-fluid">
     <div class="row">
         <div class="col-md-12 table-responsive">
-
             <div class="d-flex justify-content-between align-items-center my-3">
                 <h3 style="color:var(--accent);">Exam Bodies</h3>
                 <a href="exam-body-add.php" class="btn"
@@ -29,11 +29,9 @@ $result = mysqli_query($conn, "SELECT id, name FROM exam_bodies ORDER BY id ASC"
                     + Add Exam Body
                 </a>
             </div>
-
             <?php if ($created): ?>
                 <div class="alert alert-success">Exam body added successfully.</div>
             <?php endif; ?>
-
             <table class="table table-bordered table-hover">
                 <thead>
                     <tr>
@@ -43,9 +41,9 @@ $result = mysqli_query($conn, "SELECT id, name FROM exam_bodies ORDER BY id ASC"
                     </tr>
                 </thead>
                 <tbody>
-                <?php if (mysqli_num_rows($result) > 0):
+                <?php if (count($exam_bodies) > 0):
                     $sn = 1;
-                    while ($row = mysqli_fetch_assoc($result)): ?>
+                    foreach ($exam_bodies as $row): ?>
                     <tr>
                         <td><?= $sn++ ?></td>
                         <td><?= htmlspecialchars($row['name'], ENT_QUOTES, 'UTF-8') ?></td>
@@ -54,8 +52,7 @@ $result = mysqli_query($conn, "SELECT id, name FROM exam_bodies ORDER BY id ASC"
                                class="btn btn-sm btn-outline-warning">Subjects</a>
                         </td>
                     </tr>
-                <?php
-                    endwhile;
+                <?php endforeach;
                 else: ?>
                     <tr><td colspan="3">No exam bodies found.</td></tr>
                 <?php endif; ?>
@@ -64,7 +61,6 @@ $result = mysqli_query($conn, "SELECT id, name FROM exam_bodies ORDER BY id ASC"
         </div>
     </div>
 </div>
-
 <?php include("inc/footer.php"); ?>
 </body>
 </html>
