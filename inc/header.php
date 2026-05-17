@@ -134,7 +134,7 @@
         <?php if (has_role(ROLE_DATA_ENTRY)): ?>
 
             <div class="side-links">
-                <a href="add-mcq.php"><i class="fa-solid fa-plus"></i> Add MCQ</a>
+                <a href="exam-body-list.php"><i class="fa-solid fa-plus"></i> Add MCQ</a>
             </div>
             <div class="side-links">
                 <a href="unverified-mcqs.php"><i class="fa-solid fa-circle-exclamation"></i> Unverified MCQs</a>
