@@ -597,3 +597,23 @@ label { font-weight: 700; }
     text-transform: uppercase; letter-spacing: .05em;
     display: block; margin-bottom: 2px;
 }
+
+/* ── unverified-mcqs.php ───────────────────────────────── */
+.qs-eb-select {
+    max-width: 300px;
+    margin-bottom: 1.25rem;
+}
+.uv-topic-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: .65rem 1rem;
+    background: #12121e;
+    border: 1px solid #2a2a3a;
+    border-radius: 8px;
+    margin-bottom: .5rem;
+    cursor: pointer;
+}
+.uv-topic-row:hover { border-color: #444; }
+.uv-topic-name { font-size: 13px; color: #d0d0d0; }
+.uv-topic-count { font-size: 11px; color: #f0c040; }
