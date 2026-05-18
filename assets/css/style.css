@@ -617,3 +617,14 @@ label { font-weight: 700; }
 .uv-topic-row:hover { border-color: #444; }
 .uv-topic-name { font-size: 13px; color: #d0d0d0; }
 .uv-topic-count { font-size: 11px; color: #f0c040; }
+
+.btn-qs-danger {
+    font-size: 12px;
+    padding: 4px 12px;
+    border-radius: 6px;
+    border: 1px solid #e05252;
+    background: transparent;
+    color: #e05252;
+    cursor: pointer;
+}
+.btn-qs-danger:hover { background: rgba(224, 82, 82, 0.08); }
