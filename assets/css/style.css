@@ -1,630 +1,183 @@
-/* ─────────────────────────────────────────────
-   AcePath Hub — Main Stylesheet
-   Theme: Dark background, Gold accent
-───────────────────────────────────────────── */
-
-/* ── Variables ───────────────────────────── */
-:root {
-    --bg:           #0a0a0f;
-    --sidebar-bg:   #111118;
-    --navbar-bg:    #111118;
-    --accent:       #f0c040;
-    --accent-hover: #d4a928;
-    --text:         #f0ede8;
-    --muted:        #6b6b7a;
-    --border:       rgba(240, 192, 64, 0.2);
-    --radius:       6px;
-    --font:         'DM Sans', 'Segoe UI', sans-serif;
-}
-
-/* ── Reset ───────────────────────────────── */
-* {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-    font-family: var(--font);
-}
-
-body {
-    background: var(--bg);
-    color: var(--text);
-}
-
-a {
-    text-decoration: none;
-    color: var(--text);
-}
-
-/* ── Navbar ──────────────────────────────── */
-#navbar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 60px;
-    z-index: 200;
-    background: var(--navbar-bg);
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 16px;
-}
-
-#navbar-left {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-#navbar-brand {
-    color: var(--accent);
-    font-weight: 800;
-    font-size: 1.2rem;
-    letter-spacing: 1px;
-    text-decoration: none;
-}
-
-#navbar-right {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-}
-
-#side_panel_icon {
-    background: transparent;
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    color: var(--accent);
-    font-size: 18px;
-    width: 34px;
-    height: 34px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background 0.15s;
-}
-
-#side_panel_icon:hover {
-    background: var(--accent);
-    color: var(--bg);
-}
-
-#notif-link {
-    position: relative;
-    color: var(--text);
-    font-size: 1.2rem;
-}
-
-.notif-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: firebrick;
-    position: absolute;
-    top: -2px;
-    right: -2px;
-}
-
-.navbar-login-link {
-    color: var(--accent);
-    font-weight: 600;
-}
-
-/* ── Profile menu ────────────────────────── */
-.links {
-    display: inline-block;
-    color: var(--text);
-    padding: 0 5px;
-    position: relative;
-    width: fit-content;
-    cursor: pointer;
-}
-
-.links a {
-    color: var(--text);
-    display: block;
-}
-
-.profile_menu {
-    position: relative;
-}
-
-.submenu,
-.profile_submenu {
-    background: var(--sidebar-bg);
-    border: 1px solid var(--border);
-    position: absolute;
-    right: 0;
-    top: 100%;
-    text-align: left;
-    min-width: 140px;
-    display: none;
-    border-radius: var(--radius);
-    z-index: 200;
-    transition: opacity 0.15s ease;
-}
-
-@media (min-width: 501px) {
-    .profile_menu:hover .profile_submenu {
-        display: block;
-    }
-}
-
-.sublinks {
-    padding: 8px 14px;
-    border-bottom: 1px solid var(--border);
-}
-
-.sublinks:last-child {
-    border-bottom: none;
-}
-
-.sublinks:hover {
-    background: var(--accent);
-}
-
-.sublinks:hover a {
-    color: var(--bg);
-}
-
-.sublinks a {
-    color: var(--text);
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-
-
-/* ── Sidebar ─────────────────────────────── */
-#side_panel {
-    position: fixed;
-    top: 60px;
-    left: 0;
-    width: 240px;
-    height: calc(100vh - 60px);
-    overflow-y: auto;
-    background: var(--sidebar-bg);
-    border-right: 1px solid var(--border);
-    z-index: 150;
-    transition: left 0.3s ease;
-}
-
-#sidebar-overlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.5);
-    z-index: 140;
-}
-
-#sidebar-overlay.active {
-    display: block;
-}
-
-#side_menu_links {
-    width: 100%;
-}
-
-.side-links {
-    display: block;
-    padding: 9px 14px;
-    width: 100%;
-    cursor: pointer;
-    border-bottom: 1px solid var(--border);
-    color: var(--text);
-    transition: background 0.15s;
-}
-
-.side-links:hover {
-    background: rgba(240, 192, 64, 0.08);
-    color: var(--accent);
-}
-
-.side-links a {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    color: var(--text);
-}
-
-.side-links:hover a {
-    color: var(--accent);
-}
-
-.side-links img {
-    width: 16px;
-    opacity: 0.75;
-}
-
-/* Submenu */
-.side-submenu {
-    display: none;
-    background: rgba(240, 192, 64, 0.04);
-    border-left: 2px solid var(--accent);
-    padding-left: 10px;
-}
-
-.side-submenu.open {
-    display: block;
-}
-
-.side-sublinks {
-    padding: 7px 10px;
-    border-bottom: 1px solid var(--border);
-}
-
-.side-sublinks a {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    color: var(--muted);
-    font-size: 0.9rem;
-    white-space: nowrap;
-}
-
-.side-sublinks:hover a {
-    color: var(--accent);
-}
-
-/* ── Layout ──────────────────────────────── */
-#main-content {
-    margin-left: 240px;
-    margin-top: 60px;
-    padding: 20px;
-    min-height: calc(100vh - 60px);
-}
-
-.desktop { display: block; }
-.mobile  { display: none;  }
-
-/* ── Hero ────────────────────────────────── */
-.hero {
-    padding: 60px 20px;
-    text-align: center;
-    background: linear-gradient(180deg, rgba(240,192,64,0.05) 0%, transparent 100%);
-    border-bottom: 1px solid var(--border);
-}
-
-.hero h1 {
-    font-size: clamp(2.5rem, 8vw, 5rem);
-    font-weight: 900;
-    color: var(--accent);
-    letter-spacing: 1px;
-    text-shadow: 3px 3px 20px rgba(240,192,64,0.3);
-    margin-bottom: 16px;
-}
-
-.hero h2 {
-    font-weight: 700;
-    color: var(--text);
-    margin-bottom: 10px;
-}
-
-.hero h4 {
-    margin-top: 8px;
-    color: var(--muted);
-    font-weight: 400;
-}
-
-.hero .cta-group {
-    margin-top: 28px;
-}
-
-/* ── Buttons ─────────────────────────────── */
-.btn-primary-custom {
-    padding: 10px 24px;
-    background: var(--accent);
-    color: var(--bg);
-    border: none;
-    border-radius: var(--radius);
-    display: inline-block;
-    cursor: pointer;
-    font-weight: 600;
-    transition: background 0.2s;
-}
-
-.btn-primary-custom:hover {
-    background: var(--accent-hover);
-    color: var(--bg);
-}
-
-.btn-outline-custom {
-    padding: 10px 24px;
-    background: transparent;
-    color: var(--accent);
-    border: 2px solid var(--accent);
-    border-radius: var(--radius);
-    display: inline-block;
-    margin-left: 10px;
-    cursor: pointer;
-    font-weight: 600;
-    transition: all 0.2s;
-}
-
-.btn-outline-custom:hover {
-    background: var(--accent);
-    color: var(--bg);
-}
-
-/* ── Feature Cards ───────────────────────── */
-.features-section {
-    text-align: center;
-    padding: 50px 0;
-}
-
-.features-section h4 {
-    color: var(--accent);
-    font-weight: bold;
-    font-size: 1.1rem;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-}
-
-.divider {
-    width: 60px;
-    height: 3px;
-    background: var(--accent);
-    margin: 12px auto 36px auto;
-    border-radius: 2px;
-}
-
-.card_box {
-    padding: 24px 16px;
-    margin: 12px;
-    text-align: center;
-    border-radius: var(--radius);
-    width: 100%;
-    max-width: 180px;
-    display: inline-block;
-    border: 1px solid var(--border);
-    background: var(--sidebar-bg);
-    transition: all 0.25s;
-    vertical-align: top;
-}
-
-.card_box:hover {
-    border-color: var(--accent);
-    background: rgba(240,192,64,0.08);
-    transform: translateY(-5px);
-    cursor: pointer;
-}
-
-.card_box h1 {
-    font-size: 2rem;
-    margin: 0 0 6px 0;
-    color: var(--accent);
-}
-
-.card_box div {
-    color: var(--muted);
-    font-size: 0.85rem;
-}
-
-/* ── Footer ──────────────────────────────── */
-.footer {
-    background: var(--sidebar-bg);
-    border-top: 2px solid var(--border);
-    padding: 40px 0 20px;
-    margin-left: 240px;
-}
-
-.footer-logo {
-    width: 60px;
-}
-
-.footer-desc {
-    color: var(--muted);
-    font-size: 0.9rem;
-    margin-top: 10px;
-}
-
-.footer-title {
-    font-weight: 600;
-    color: var(--accent);
-    margin-bottom: 8px;
-}
-
-.footer-links a {
-    display: block;
-    color: var(--muted);
-    text-decoration: none;
-    margin: 4px 0;
-    font-size: 0.95rem;
-}
-
-.footer-links a:hover {
-    color: var(--accent);
-}
-
-.footer-social {
-    display: flex;
-    justify-content: center;
-    gap: 16px;
-    margin-top: 8px;
-}
-
-.footer-social a {
-    color: var(--accent);
-    font-size: 1.6rem;
-    transition: color 0.2s;
-}
-
-.footer-social a:hover {
-    color: var(--accent);
-}
-
-.footer-copyright {
-    text-align: center;
-    color: var(--accent);
-    font-weight: 500;
-    font-size: 1rem;
-    margin-top: 16px;
-    padding-top: 16px;
-    border-top: 1px solid var(--border);
-}
-
-/* ── Messenger float ─────────────────────── */
-.messanger img {
-    width: 40px;
-    border-radius: 50%;
-    height: 40px;
-    position: fixed;
-    right: 18px;
-    bottom: 18px;
-    box-shadow: 0 0 10px rgba(240,192,64,0.3);
-    cursor: pointer;
-    border: 1px solid var(--accent);
-    transition: transform 0.2s;
-}
-
-.messanger img:hover {
-    transform: scale(1.1);
-}
-
-/* ── Mobile ──────────────────────────────── */
-@media only screen and (max-width: 768px) {
-    .desktop { display: none; }
-    .mobile  { display: block; }
-
-    #side_panel {
-        left: -240px;
+<?php
+require_once 'src/db/db_conn.php';
+require_once 'src/db/session.php';
+
+require_role(ROLE_ADMIN);
+
+if (!isset($_GET['question_id']) || !ctype_digit($_GET['question_id'])) {
+    header('Location: home.php');
+    exit;
+}
+$question_id = (int)$_GET['question_id'];
+
+// Fetch current question data
+$stmt = mysqli_prepare($conn,
+    'SELECT q.id, q.question_set_id, q.question, q.option_a, q.option_b,
+            q.option_c, q.option_d, q.answer, q.explanation
+     FROM questions q
+     WHERE q.id = ?
+     LIMIT 1');
+mysqli_stmt_bind_param($stmt, 'i', $question_id);
+mysqli_stmt_execute($stmt);
+$res = mysqli_stmt_get_result($stmt);
+$q   = mysqli_fetch_assoc($res);
+mysqli_free_result($res);
+mysqli_stmt_close($stmt);
+
+if (!$q) {
+    header('Location: home.php');
+    exit;
+}
+
+$question_set_id = (int)$q['question_set_id'];
+$errors = [];
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    csrf_verify();
+
+    $new_question    = trim($_POST['question']    ?? '');
+    $new_option_a    = trim($_POST['option_a']    ?? '');
+    $new_option_b    = trim($_POST['option_b']    ?? '');
+    $new_option_c    = trim($_POST['option_c']    ?? '');
+    $new_option_d    = trim($_POST['option_d']    ?? '');
+    $new_answer      = strtoupper(trim($_POST['answer'] ?? ''));
+    $new_explanation = trim($_POST['explanation'] ?? '');
+
+    if ($new_question === '')  $errors[] = 'Question text is required.';
+    if ($new_option_a === '')  $errors[] = 'Option A is required.';
+    if ($new_option_b === '')  $errors[] = 'Option B is required.';
+    if ($new_option_c === '')  $errors[] = 'Option C is required.';
+    if ($new_option_d === '')  $errors[] = 'Option D is required.';
+    if (!in_array($new_answer, ['A','B','C','D'], true)) {
+        $errors[] = 'Select a valid answer.';
     }
 
-    #side_panel.open {
-        left: 0;
+    if (empty($errors)) {
+        $explanation_val = $new_explanation !== '' ? $new_explanation : null;
+
+        $stmt = mysqli_prepare($conn,
+            'UPDATE questions
+             SET question = ?, option_a = ?, option_b = ?, option_c = ?,
+                 option_d = ?, answer = ?, explanation = ?
+             WHERE id = ?');
+        mysqli_stmt_bind_param($stmt, 'sssssssi',
+            $new_question,
+            $new_option_a,
+            $new_option_b,
+            $new_option_c,
+            $new_option_d,
+            $new_answer,
+            $explanation_val,
+            $question_id
+        );
+
+        if (mysqli_stmt_execute($stmt)) {
+            mysqli_stmt_close($stmt);
+            header('Location: mcq-details.php?question_set_id=' . $question_set_id . '&ok=1');
+            exit;
+        }
+
+        mysqli_stmt_close($stmt);
+        $errors[] = 'Update failed. Try again.';
     }
 
-    #main-content,
-    .footer {
-        margin-left: 0;
-    }
+    // Repopulate on error
+    $q['question']    = $new_question;
+    $q['option_a']    = $new_option_a;
+    $q['option_b']    = $new_option_b;
+    $q['option_c']    = $new_option_c;
+    $q['option_d']    = $new_option_d;
+    $q['answer']      = $new_answer;
+    $q['explanation'] = $new_explanation;
+}
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Update Question #<?= $question_id ?></title>
+    <?php include 'inc/links.php'; ?>
+</head>
+<body>
+<?php include 'inc/header.php'; ?>
 
-    .card_box {
-        width: 48% !important;
-        max-width: none;
-        margin: 8px 1%;
-        padding: 15px;
-    }
-}
+<div class="container-fluid">
 
-@media only screen and (max-width: 400px) {
-    .card_box {
-        width: 100% !important;
-        margin: 10px 0;
-    }
-}
+    <div class="qs-list-header">
+        <div class="qs-list-title">Update Question #<?= $question_id ?></div>
+        <a href="mcq-details.php?question_set_id=<?= $question_set_id ?>" class="btn-qs-sm">
+            &larr; Back
+        </a>
+    </div>
 
-.info_card{
-    display:inline-block;
-    margin:10px; 
-    padding:10px;
-    border-radius:5px;
-    border:1px solid var(--accent);
-    text-align:center;
-    color:var(--accent);
-}
+    <?php if (!empty($errors)): ?>
+        <div class="alert alert-danger">
+            <?php foreach ($errors as $e): ?>
+                <div><?= htmlspecialchars($e) ?></div>
+            <?php endforeach; ?>
+        </div>
+    <?php endif; ?>
 
-.info_card:hover{
-    color:white;
-    background:var(--accent);
-    box-shadow: 5px 5px 10px rgba(0,0,0,0.3);
-    cursor:pointer;
-}
+    <form method="POST" class="user-form">
+        <?= csrf_input() ?>
 
-label { font-weight: 700; }
-.question-block {
-    border: 1px solid #333;
-    border-radius: 8px;
-    padding: 1rem;
-    margin-bottom: 1.5rem;
-}
-.text-muted {
-    color: #888 !important;
-}
+        <div class="row">
 
-/* ── mcq-details.php ───────────────────────────────────── */
-.mcqd-actions { display: flex; gap: 8px; align-items: center; }
+            <div class="col-md-12 mb-3">
+                <label class="form-label">Question</label>
+                <textarea name="question" class="form-control" rows="3"
+                          required><?= htmlspecialchars($q['question']) ?></textarea>
+            </div>
 
-.mcqd-meta {
-    display: flex; flex-wrap: wrap; align-items: center;
-    gap: 6px; margin-bottom: 1rem;
-}
-.mcqd-meta-date { font-size: 11px; color: #555; margin-left: auto; }
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Option A</label>
+                <input type="text" name="option_a" class="form-control"
+                       value="<?= htmlspecialchars($q['option_a']) ?>" required>
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Option B</label>
+                <input type="text" name="option_b" class="form-control"
+                       value="<?= htmlspecialchars($q['option_b']) ?>" required>
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Option C</label>
+                <input type="text" name="option_c" class="form-control"
+                       value="<?= htmlspecialchars($q['option_c']) ?>" required>
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Option D</label>
+                <input type="text" name="option_d" class="form-control"
+                       value="<?= htmlspecialchars($q['option_d']) ?>" required>
+            </div>
 
-.badge-unverified { background: #2e1a0e; color: #e07b39; }
-.badge-draft      { background: #1e1e2e; color: #888; border: 1px solid #2a2a3a; }
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Correct Answer</label>
+                <select name="answer" class="form-select" required>
+                    <?php foreach (['A','B','C','D'] as $opt): ?>
+                        <option value="<?= $opt ?>"
+                            <?= strtoupper($q['answer']) === $opt ? 'selected' : '' ?>>
+                            <?= $opt ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
 
-.mcqd-passage {
-    font-size: 13px; color: #bbb; line-height: 1.7;
-    background: #12121e; border: 1px solid #2a2a3a;
-    border-radius: 6px; padding: .75rem 1rem; margin-bottom: 1rem;
-}
-.mcqd-passage-label {
-    font-size: 10px; font-weight: 500; color: #555;
-    text-transform: uppercase; letter-spacing: .05em; margin-bottom: .4rem;
-}
+            <div class="col-md-12 mb-3">
+                <label class="form-label">Explanation <small class="text-muted">(optional)</small></label>
+                <textarea name="explanation" class="form-control"
+                          rows="3"><?= htmlspecialchars($q['explanation'] ?? '') ?></textarea>
+            </div>
 
-.mcqd-image { margin-bottom: 1rem; }
-.mcqd-image img { max-width: 320px; border-radius: 6px; border: 1px solid #2a2a3a; }
+            <div class="col-md-12">
+                <button type="submit" class="btn-qs-gold">Update Question</button>
+            </div>
 
-.mcqd-q-card {
-    background: #12121e; border: 1px solid #2a2a3a;
-    border-radius: 8px; margin-bottom: 1rem; overflow: hidden;
-}
-.mcqd-q-head {
-    display: flex; align-items: center; gap: 8px;
-    padding: .5rem 1rem; border-bottom: 1px solid #2a2a3a;
-    background: #0d0d18;
-}
-.mcqd-q-id { font-size: 11px; color: #444; font-family: monospace; }
-.mcqd-q-body { padding: .75rem 1rem; }
-.mcqd-q-text { font-size: 13px; color: #d0d0d0; line-height: 1.6; margin-bottom: .6rem; }
+        </div>
+    </form>
 
-.mcqd-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 1rem; margin-bottom: .5rem; }
-.mcqd-opt  { font-size: 13px; color: #777; padding: 2px 0; }
-.mcqd-opt-correct { color: #6abf47; font-weight: 500; }
-.mcqd-tick { margin-left: 4px; }
+</div>
 
-.mcqd-expl {
-    font-size: 12px; color: #999; line-height: 1.6;
-    background: #0d0d18; border-left: 2px solid #2a2a3a;
-    padding: .4rem .75rem; margin-top: .5rem; border-radius: 0 4px 4px 0;
-}
-.mcqd-expl-label {
-    font-size: 10px; font-weight: 500; color: #555;
-    text-transform: uppercase; letter-spacing: .05em;
-    display: block; margin-bottom: 2px;
-}
-
-/* ── unverified-mcqs.php ───────────────────────────────── */
-.qs-eb-select {
-    max-width: 300px;
-    margin-bottom: 1.25rem;
-}
-.uv-topic-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: .65rem 1rem;
-    background: #12121e;
-    border: 1px solid #2a2a3a;
-    border-radius: 8px;
-    margin-bottom: .5rem;
-    cursor: pointer;
-}
-.uv-topic-row:hover { border-color: #444; }
-.uv-topic-name { font-size: 13px; color: #d0d0d0; }
-.uv-topic-count { font-size: 11px; color: #f0c040; }
-
-.btn-qs-danger {
-    font-size: 12px;
-    padding: 4px 12px;
-    border-radius: 6px;
-    border: 1px solid #e05252;
-    background: transparent;
-    color: #e05252;
-    cursor: pointer;
-}
-.btn-qs-danger:hover { background: rgba(224, 82, 82, 0.08); }
+<?php include 'inc/footer.php'; ?>
+</body>
+</html>
