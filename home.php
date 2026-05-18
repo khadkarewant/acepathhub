@@ -13,13 +13,13 @@
     <?php
        include("inc/header.php");
     ?>
+ 
     <div class="container-fluid">
-        <div class="row">
-        
-        <div class="row">
-            <?php if(has_role(ROLE_ADMIN)): ?>
-            <div class="col-md-8">
-                <h4 style="color:var(--primary);">Today's Stats:</h4>
+
+        <?php if(has_role(ROLE_ADMIN)): ?>
+        <div class="row mb-3">
+            <div class="col-12">
+                <h4 style="color:var(--accent);">Today's Stats:</h4>
                 <div class="info_card">
                     <?php
                         $get_data = mysqli_query($conn, "SELECT COUNT(*) AS cnt FROM users WHERE registered_on = CURDATE()");
@@ -28,8 +28,11 @@
                     ?>
                 </div>
             </div>
-            <div class="col-md-8">
-                <h4 style="color:var(--primary);">ACE PATH HUB Stats:</h4>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col-12">
+                <h4 style="color:var(--accent);">ACE PATH HUB Stats:</h4>
                 <div class="info_card">
                     <?php
                         $get_data = mysqli_query($conn, "SELECT COUNT(*) AS cnt FROM users");
@@ -37,52 +40,36 @@
                         echo '<h1>' . $row['cnt'] . '</h1><div>Total Users</div>';
                     ?>
                 </div>
-                <div class="info_card">
-                    <h1>—</h1><div>Total Topics</div>
-                </div>
-                <div class="info_card">
-                    <h1>—</h1><div>Total MCQs</div>
-                </div>
-                <div class="info_card">
-                    <h1>—</h1><div>Total Questions</div>
+                <div class="info_card"><h1>—</h1><div>Total Topics</div></div>
+                <div class="info_card"><h1>—</h1><div>Total MCQs</div></div>
+                <div class="info_card"><h1>—</h1><div>Total Questions</div></div>
+            </div>
+        </div>
+        <?php endif; ?>
+
+        <?php if(has_role(ROLE_STUDENT)): ?>
+        <div class="row">
+            <div class="col-12">
+                <div class="d-flex justify-content-center align-items-center gap-2 flex-wrap">
+                    <button class="btn btn-sm btn-outline-primary same-btn"
+                            onclick="window.location.href='my-products.php'">Take Exam</button>
+                    <button class="btn btn-sm btn-outline-primary same-btn"
+                            onclick="window.location.href='course.php'">Full Course</button>
+                    <button class="btn btn-sm btn-outline-primary same-btn"
+                            onclick="window.location.href='downloads.php'">Downloads</button>
                 </div>
             </div>
-            <?php endif; ?>
-
-            <?php if(has_role(ROLE_STUDENT)){ ?>
-                <div class="col-md-12 mt-3">
-                    <div class="d-flex justify-content-center align-items-center gap-2 flex-wrap">
-                
-                        <!-- Purchased Mocks -->
-                        <button class="btn btn-sm btn-outline-primary same-btn"
-                                onclick="window.location.href='my-products.php'">
-                            Take Exam
-                        </button>
-                
-                        <!-- Full Course -->
-                        <button class="btn btn-sm btn-outline-primary same-btn"
-                                onclick="window.location.href='course.php'">
-                            Full Course
-                        </button>
-                        
-                        <!-- Downloads -->
-                        <button class="btn btn-sm btn-outline-primary same-btn"
-                                onclick="window.location.href='downloads.php'">
-                            Downloads
-                        </button>
-                
-                    </div>
-                </div>
-
-            <?php } ?>
-
-            <?php if(has_role(ROLE_DATA_ENTRY)) {
-                ?> 
-                <div>
-                    Welcome DATA ENTRY
-                </div>
-            <?php } ?>
         </div>
+        <?php endif; ?>
+
+        <?php if(has_role(ROLE_DATA_ENTRY)): ?>
+        <div class="row">
+            <div class="col-12">
+                <p>Welcome DATA ENTRY</p>
+            </div>
+        </div>
+        <?php endif; ?>
+
     </div>
 
     <?php
