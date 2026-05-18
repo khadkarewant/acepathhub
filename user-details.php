@@ -1,58 +1,40 @@
 <?php
-require_once "src/db/db_conn.php";
-require_once "src/db/session.php";
-require_once "src/db/privileges.php";
-require_once "src/security/csrf.php";
+require_once 'src/db/db_conn.php';
+require_once 'src/db/session.php';
 
-if ($view_user !== "true") {
-    header("Location: home.php");
+require_role(ROLE_ADMIN);
+
+if (!isset($_GET['user_id']) || !ctype_digit($_GET['user_id'])) {
+    header('Location: users.php');
     exit;
 }
+$target_user_id = (int)$_GET['user_id'];
 
-function e($s): string {
-    return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
-}
+$role_labels = [
+    ROLE_ADMIN      => 'Admin',
+    ROLE_STUDENT    => 'Student',
+    ROLE_DATA_ENTRY => 'Data Entry',
+];
 
-// Validate id (reject non-numeric)
-if (!isset($_GET['id']) || !ctype_digit($_GET['id'])) {
-    header("Location: users.php");
-    exit;
-}
-$target_user_id = (int)$_GET['id'];
-
-// Prepared SELECT (kills SQLi)
-$stmt = mysqli_prepare($conn, "SELECT first_name, middle_name, last_name, username, email, phone, country, city, postal_code, gender, dob, type, referral_code, referral_by
-                              FROM users
-                              WHERE user_id = ?
-                              LIMIT 1");
-if (!$stmt) {
-    header("Location: users.php");
-    exit;
-}
-mysqli_stmt_bind_param($stmt, "i", $target_user_id);
+$stmt = mysqli_prepare($conn,
+    'SELECT user_id, first_name, middle_name, last_name, username,
+            email, phone, country, city, postal_code, gender, dob,
+            role, status, is_blocked, referral_code, referral_by,
+            registered_on, last_login
+     FROM users
+     WHERE user_id = ?
+     LIMIT 1');
+mysqli_stmt_bind_param($stmt, 'i', $target_user_id);
 mysqli_stmt_execute($stmt);
-$result = mysqli_stmt_get_result($stmt);
-$row = $result ? mysqli_fetch_assoc($result) : null;
+$res = mysqli_stmt_get_result($stmt);
+$row = mysqli_fetch_assoc($res);
+mysqli_free_result($res);
 mysqli_stmt_close($stmt);
 
 if (!$row) {
-    header("Location: users.php");
+    header('Location: users.php');
     exit;
 }
-
-// Build display vars (still escape on output)
-$user_name      = trim(($row['first_name'] ?? '') . " " . ($row['middle_name'] ?? '') . " " . ($row['last_name'] ?? ''));
-$user_username  = $row['username'] ?? '';
-$email          = $row['email'] ?? '';
-$phone          = $row['phone'] ?? '';
-$country        = $row['country'] ?? '';
-$city           = $row['city'] ?? '';
-$postal_code    = $row['postal_code'] ?? '';
-$gender         = $row['gender'] ?? '';
-$dob            = $row['dob'] ?? '';
-$type           = $row['type'] ?? '';
-$referral_code  = $row['referral_code'] ?? '';
-$referral_by    = $row['referral_by'] ?? '';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -60,56 +42,91 @@ $referral_by    = $row['referral_by'] ?? '';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>User Details</title>
-    <?php include("src/inc/links.php"); ?>
+    <?php include 'inc/links.php'; ?>
 </head>
 <body>
-<?php include("src/inc/header.php"); ?>
+<?php include 'inc/header.php'; ?>
 
 <div class="container-fluid">
-    <div class="row">
-        <div class="col-md-12 table-responsive p-2">
-            <table class="table">
-                <tbody>
-                    <tr><th>Name</th><td><?= e($user_name) ?></td></tr>
-                    <tr><th>Username</th><td><?= e($user_username) ?></td></tr>
-                    <tr><th>Email</th><td><?= e($email) ?></td></tr>
-                    <tr><th>Phone</th><td><?= e($phone) ?></td></tr>
-                    <tr><th>Country</th><td><?= e($country) ?></td></tr>
-                    <tr><th>City</th><td><?= e($city) ?></td></tr>
-                    <tr><th>Postal Code</th><td><?= e($postal_code) ?></td></tr>
-                    <tr><th>Gender</th><td><?= e($gender) ?></td></tr>
-                    <tr><th>DOB</th><td><?= e($dob) ?></td></tr>
-                    <tr><th>Type</th><td><?= e($type) ?></td></tr>
-                    <tr><th>Referral Code</th><td><?= e($referral_code) ?></td></tr>
-                    <tr><th>Referral By</th><td><?= e($referral_by) ?></td></tr>
-                </tbody>
-            </table>
 
-            <form method="POST" action="reset-user-password.php" style="display:inline;">
-                <?= csrf_input(); ?>
-                <input type="hidden" name="reset_user_id" value="<?= (int)$target_user_id ?>">
-                <button class="btn" style="background:var(--primary);color:white;"
-                        onclick="return confirm('Reset password to default for this user?');">
+    <div class="qs-list-header">
+        <div class="qs-list-title">
+            <?= htmlspecialchars(trim(
+                $row['first_name'] . ' ' .
+                ($row['middle_name'] ? $row['middle_name'] . ' ' : '') .
+                $row['last_name']
+            )) ?>
+        </div>
+        <span class="badge <?= $row['is_blocked'] ? 'badge-unverified' : 'badge-published' ?>">
+            <?= $row['is_blocked'] ? 'Blocked' : htmlspecialchars($row['status']) ?>
+        </span>
+    </div>
+
+    <table class="table">
+        <tbody>
+            <tr><th>User ID</th>      <td><?= $row['user_id'] ?></td></tr>
+            <tr><th>Username</th>     <td><?= htmlspecialchars($row['username']) ?></td></tr>
+            <tr><th>Email</th>        <td><?= htmlspecialchars($row['email']) ?></td></tr>
+            <tr><th>Phone</th>        <td><?= htmlspecialchars($row['phone']) ?></td></tr>
+            <tr><th>Role</th>         <td><?= $role_labels[$row['role']] ?? 'Unknown' ?></td></tr>
+            <tr><th>Gender</th>       <td><?= htmlspecialchars($row['gender'] ?? '—') ?></td></tr>
+            <tr><th>DOB</th>          <td><?= htmlspecialchars($row['dob'] ?? '—') ?></td></tr>
+            <tr><th>Country</th>      <td><?= htmlspecialchars($row['country'] ?? '—') ?></td></tr>
+            <tr><th>City</th>         <td><?= htmlspecialchars($row['city'] ?? '—') ?></td></tr>
+            <tr><th>Postal Code</th>  <td><?= htmlspecialchars($row['postal_code'] ?? '—') ?></td></tr>
+            <tr><th>Referral Code</th><td><?= htmlspecialchars($row['referral_code']) ?></td></tr>
+            <tr><th>Referral By</th>  <td><?= htmlspecialchars($row['referral_by'] ?? '—') ?></td></tr>
+            <tr><th>Registered</th>   <td><?= htmlspecialchars($row['registered_on']) ?></td></tr>
+            <tr><th>Last Login</th>   <td><?= htmlspecialchars($row['last_login'] ?? 'Never') ?></td></tr>
+        </tbody>
+    </table>
+
+    <div class="ud-actions">
+
+        <?php if ($row['role'] !== ROLE_ADMIN): ?>
+            <form method="POST" action="user-password-reset.php" style="display:inline;">
+                <?= csrf_input() ?>
+                <input type="hidden" name="user_id" value="<?= $target_user_id ?>">
+                <button type="submit" class="btn-qs-sm"
+                        onclick="return confirm('Reset password for this user?')">
                     Reset Password
                 </button>
             </form>
+        <?php endif; ?>
 
-            <?php if ($type === "student"): ?>
-                <button onclick="window.location.href='assign-product.php?student_id=<?= (int)$target_user_id ?>'"
-                        class="btn text-light bg-success">
-                    Assign Product
+        <?php if ($row['is_blocked']): ?>
+            <form method="POST" action="user-block.php" style="display:inline;">
+                <?= csrf_input() ?>
+                <input type="hidden" name="user_id" value="<?= $target_user_id ?>">
+                <button type="submit" class="btn-qs-gold"
+                        onclick="return confirm('Unblock this user?')">
+                    Unblock
                 </button>
-
-                <button onclick="window.location.href='purchase-history.php?student_id=<?= (int)$target_user_id ?>'"
-                        class="btn text-dark bg-warning">
-                    Purchase History
+            </form>
+        <?php else: ?>
+            <form method="POST" action="user-block.php" style="display:inline;">
+                <?= csrf_input() ?>
+                <input type="hidden" name="user_id" value="<?= $target_user_id ?>">
+                <button type="submit" class="btn-qs-danger"
+                        onclick="return confirm('Block this user?')">
+                    Block
                 </button>
-            <?php endif; ?>
+            </form>
+        <?php endif; ?>
 
-        </div>
+        <?php if ($row['role'] === ROLE_STUDENT): ?>
+            <a href="assign-product.php?user_id=<?= $target_user_id ?>" class="btn-qs-sm">
+                Assign Product
+            </a>
+            <a href="purchase-history.php?user_id=<?= $target_user_id ?>" class="btn-qs-sm">
+                Purchase History
+            </a>
+        <?php endif; ?>
+
     </div>
+
 </div>
 
-<?php include("src/inc/footer.php"); ?>
+<?php include 'inc/footer.php'; ?>
 </body>
 </html>
