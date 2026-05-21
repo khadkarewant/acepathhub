@@ -28,6 +28,9 @@ if (!$subject) {
 }
 
 $created = isset($_GET['created']);
+$updated = isset($_GET['updated']);
+$deleted = isset($_GET['deleted']);
+$error   = $_GET['error'] ?? '';
 
 $stmt = mysqli_prepare($conn, "SELECT id, name FROM topics WHERE subject_id = ? ORDER BY id ASC");
 mysqli_stmt_bind_param($stmt, "i", $subject_id);
@@ -66,6 +69,16 @@ mysqli_stmt_close($stmt);
 
             <?php if ($created): ?>
                 <div class="alert alert-success">Topic added successfully.</div>
+            <?php elseif ($updated): ?>
+                <div class="alert alert-success">Topic updated successfully.</div>
+            <?php elseif ($deleted): ?>
+                <div class="alert alert-success">Topic deleted.</div>
+            <?php elseif ($error === 'has_questions'): ?>
+                <div class="alert alert-danger">Cannot delete — remove all questions first.</div>
+            <?php elseif ($error === 'in_use'): ?>
+                <div class="alert alert-danger">Cannot delete — topic is assigned to an exam or practice group.</div>
+            <?php elseif ($error === 'delete_failed'): ?>
+                <div class="alert alert-danger">Delete failed. Please try again.</div>
             <?php endif; ?>
 
             <table class="table table-bordered table-hover">
@@ -87,6 +100,15 @@ mysqli_stmt_close($stmt);
                             <?php if (has_role(ROLE_ADMIN)): ?>
                                 <a href="question-set-list.php?topic_id=<?= (int)$row['id'] ?>"
                                 class="btn btn-sm btn-outline-warning">View MCQs</a>
+                                <a href="topic-edit.php?id=<?= (int)$row['id'] ?>"
+                                    class="btn btn-sm btn-outline-primary ms-1">Edit</a>
+                                    <form method="POST" action="topic-delete.php" class="d-inline ms-1"
+                                        onsubmit="return confirm('Delete this topic?');">
+                                        <?= csrf_input(); ?>
+                                        <input type="hidden" name="id" value="<?= (int)$row['id'] ?>">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                                    </form>
+
                             <?php endif; ?>
 
                             <?php if (has_role(ROLE_DATA_ENTRY)): ?>
