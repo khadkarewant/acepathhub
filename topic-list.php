@@ -15,7 +15,7 @@ if ($subject_id === 0) {
 }
 
 // Verify subject exists
-$stmt = mysqli_prepare($conn, "SELECT id, name FROM subjects WHERE id = ? LIMIT 1");
+$stmt = mysqli_prepare($conn, "SELECT id, name, exam_body_id FROM subjects WHERE id = ? LIMIT 1");
 mysqli_stmt_bind_param($stmt, "i", $subject_id);
 mysqli_stmt_execute($stmt);
 $sub_result = mysqli_stmt_get_result($stmt);
@@ -54,7 +54,7 @@ mysqli_stmt_close($stmt);
                     <?= htmlspecialchars($subject['name'], ENT_QUOTES, 'UTF-8') ?> — Topics
                 </h3>
                 <div>
-                    <a href="subject-list.php?exam_body_id=<?= $subject_id ?>" class="btn btn-sm btn-outline-secondary me-2">Back</a>
+                    <a href="subject-list.php?exam_body_id=<?= (int)$subject['exam_body_id'] ?>" class="btn btn-sm btn-outline-secondary me-2">Back</a>
                     <?php if (has_role(ROLE_ADMIN)): ?>
                         <a href="topic-add.php?subject_id=<?= $subject_id ?>" class="btn btn-sm"
                         style="background:var(--accent);color:#0a0a0f;font-weight:600;">
