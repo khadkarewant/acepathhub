@@ -28,6 +28,9 @@ if (!$exam_body) {
 }
 
 $created = isset($_GET['created']);
+$updated = isset($_GET['updated']);
+$deleted = isset($_GET['deleted']);
+$error   = $_GET['error'] ?? '';
 
 $stmt = mysqli_prepare($conn, "SELECT id, name FROM subjects WHERE exam_body_id = ? ORDER BY id ASC");
 mysqli_stmt_bind_param($stmt, "i", $exam_body_id);
@@ -66,6 +69,14 @@ mysqli_stmt_close($stmt);
 
             <?php if ($created): ?>
                 <div class="alert alert-success">Subject added successfully.</div>
+            <?php elseif ($updated): ?>
+                <div class="alert alert-success">Subject updated successfully.</div>
+            <?php elseif ($deleted): ?>
+                <div class="alert alert-success">Subject deleted.</div>
+            <?php elseif ($error === 'has_topics'): ?>
+                <div class="alert alert-danger">Cannot delete — remove all topics first.</div>
+            <?php elseif ($error === 'delete_failed'): ?>
+                <div class="alert alert-danger">Delete failed. Please try again.</div>
             <?php endif; ?>
 
             <table class="table table-bordered table-hover">
@@ -85,7 +96,17 @@ mysqli_stmt_close($stmt);
                         <td><?= htmlspecialchars($row['name'], ENT_QUOTES, 'UTF-8') ?></td>
                         <td>
                             <a href="topic-list.php?subject_id=<?= (int)$row['id'] ?>"
-                               class="btn btn-sm btn-outline-warning">Topics</a>
+                            class="btn btn-sm btn-outline-warning">Topics</a>
+                            <?php if (has_role(ROLE_ADMIN)): ?>
+                                <a href="subject-edit.php?id=<?= (int)$row['id'] ?>"
+                                class="btn btn-sm btn-outline-primary ms-1">Edit</a>
+                                <form method="POST" action="subject-delete.php" class="d-inline ms-1"
+                                    onsubmit="return confirm('Delete this subject?');">
+                                    <?= csrf_input(); ?>
+                                    <input type="hidden" name="id" value="<?= (int)$row['id'] ?>">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                                </form>
+                            <?php endif; ?>
                         </td>
                     </tr>
                 <?php endforeach;
