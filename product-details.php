@@ -4,7 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . "/src/db/db_conn.php";
 require_once __DIR__ . "/src/db/session.php";
 
-require_role([ROLE_ADMIN, ROLE_STUDENT]);
+require_role(ROLE_ADMIN, ROLE_STUDENT);
 
 $product_id = isset($_GET['product_id']) ? (int)$_GET['product_id'] : 0;
 if ($product_id <= 0) {
