@@ -6,22 +6,6 @@ require_once __DIR__ . "/src/db/session.php";
 
 require_role(ROLE_ADMIN);
 
-// Fetch exam bodies + subjects before header
-$stmt = $conn->prepare("
-    SELECT s.id, s.name, eb.name AS exam_body_name, eb.id AS exam_body_id
-    FROM subjects s
-    JOIN exam_bodies eb ON eb.id = s.exam_body_id
-    ORDER BY eb.name ASC, s.name ASC
-");
-$stmt->execute();
-$all_subjects = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-$stmt->close();
-
-$subjects_by_body = [];
-foreach ($all_subjects as $s) {
-    $subjects_by_body[$s['exam_body_name']][] = $s;
-}
-
 $err = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['submit'] ?? '') === 'add_product') {
@@ -38,9 +22,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['submit'] ?? '') === 'add_p
     $description  = trim((string)($_POST['description'] ?? ''));
     $sets         = ($product_type === 'mock') ? (int)($_POST['sets'] ?? 0) : 1;
     $price                 = isset($_POST['price']) ? (float)$_POST['price'] : 0.0;
-    $subject_ids           = isset($_POST['subject_ids']) && is_array($_POST['subject_ids'])
-                                ? array_map('intval', $_POST['subject_ids'])
-                                : [];
 
     // Validate
     if ($name === '' || mb_strlen($name, 'UTF-8') > 120) {
@@ -57,8 +38,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['submit'] ?? '') === 'add_p
         $err = 'Sets must be greater than 0 for mock exam.';
     } elseif ($price < 0) {
         $err = 'Price cannot be negative.';
-    } elseif (empty($subject_ids)) {
-        $err = 'At least one subject must be selected.';
     } else {
         $conn->begin_transaction();
         try {
@@ -83,17 +62,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['submit'] ?? '') === 'add_p
             );
             $stmt->execute();
             $product_id = (int)$conn->insert_id;
-            $stmt->close();
-
-            // Insert product_subjects
-            $stmt = $conn->prepare("
-                INSERT IGNORE INTO product_subjects (product_id, subject_id)
-                VALUES (?, ?)
-            ");
-            foreach ($subject_ids as $sid) {
-                $stmt->bind_param("ii", $product_id, $sid);
-                $stmt->execute();
-            }
             $stmt->close();
 
             $conn->commit();
@@ -201,23 +169,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['submit'] ?? '') === 'add_p
                     <label class="form-label">Price (₦)</label>
                     <input type="number" name="price" class="form-control" min="0" step="0.01" required
                            value="<?= htmlspecialchars($_POST['price'] ?? '0.00', ENT_QUOTES, 'UTF-8') ?>">
-                </div>
-
-                <div class="mb-3">
-                    <label class="form-label">Subjects</label>
-                    <select name="subject_ids[]" class="form-control" multiple size="8" required>
-                        <?php foreach ($subjects_by_body as $body_name => $subjects): ?>
-                            <optgroup label="<?= htmlspecialchars($body_name, ENT_QUOTES, 'UTF-8') ?>">
-                                <?php foreach ($subjects as $s): ?>
-                                    <option value="<?= $s['id'] ?>"
-                                        <?= in_array($s['id'], (array)($_POST['subject_ids'] ?? []), true) ? 'selected' : '' ?>>
-                                        <?= htmlspecialchars($s['name'], ENT_QUOTES, 'UTF-8') ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </optgroup>
-                        <?php endforeach; ?>
-                    </select>
-                    <small class="text-muted">Hold Ctrl / Cmd to select multiple.</small>
                 </div>
 
                 <button type="submit" name="submit" value="add_product"
