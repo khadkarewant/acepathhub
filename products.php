@@ -1,144 +1,167 @@
 <?php
-    include("src/db/db_conn.php");
-    include("src/db/session.php");
-    include("src/db/privileges.php");
+declare(strict_types=1);
 
+require_once __DIR__ . "/src/db/db_conn.php";
+require_once __DIR__ . "/src/db/session.php";
+
+require_role([ROLE_ADMIN, ROLE_STUDENT]);
+
+if (has_role(ROLE_ADMIN)) {
+    $stmt = $conn->prepare("
+        SELECT id, name, is_practice, duration_minutes, total_questions,
+               sets, price, status
+        FROM products
+        ORDER BY is_practice ASC, name ASC
+    ");
+    $stmt->execute();
+    $products = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
+} else {
+    $stmt = $conn->prepare("
+        SELECT id, name, is_practice, duration_minutes, total_questions,
+               sets, price
+        FROM products
+        WHERE status = 'active'
+        ORDER BY is_practice ASC, name ASC
+    ");
+    $stmt->execute();
+    $products = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
+
+    $mock_products     = array_filter($products, fn($p) => $p['is_practice'] == 0);
+    $practice_products = array_filter($products, fn($p) => $p['is_practice'] == 1);
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Products</title>
-    <?php
-        include("src/inc/links.php");
-    ?>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Products</title>
+<?php include("inc/links.php"); ?>
 </head>
 <body>
-    <?php
-        include("src/inc/header.php");
-    ?>
+<?php include("inc/header.php"); ?>
 
-    <!-- for ! student -->
-    <!-- for ! student -->
-    <!-- for ! student -->
-    <?php
-        if($type !== "student"){
-    ?>
-        <div class="container-fluid">
-            <div class="row">
-                <div class="col-md-12 table-responsive">
-                
-                    <h3><strong>All Products</strong></h3>
-                    <?php
-                        if($create_product == "true"){
-                            echo'
-                            <button class="btn" style="background:var(--primary);color:white;" onclick="window.location.href=\'add-product.php\'">Add Product</button>
-                            <br>
-                            <hr>
-                            ';
-                        }
-                    ?>
+<div class="container-fluid p-3">
 
-                    <table class="table" id="datatable">
-                        <thead>
-                            <tr>
-                                <th>Product Id</th>
-                                <th>Product Name</th>
-                                <th>Course Name</th>
-                                <th>No. of Sets</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                        <?php
-                            $get_products = mysqli_query($conn, "SELECT * FROM `products` ");
-                            if (mysqli_num_rows($get_products)>0) {
-                                while ($row = mysqli_fetch_assoc($get_products)) { 
-                                    $get_course_name = mysqli_query($conn, "SELECT * FROM `courses` WHERE `id` = '".$row['course_id']."' ");
-                                    foreach ($get_course_name as $key => $value) {
-                                        $course_name = $value['name'];
-                                    }
+<?php if (has_role(ROLE_ADMIN)): ?>
 
-                                    echo'
-                                        <tr>
-                                            <td>'.$row['id'].'</td>
-                                            <td>'.$row['name'].'</td>
-                                            <td>'.$value['name'].'</td>
-                                            <td>'.$row['sets'].'</td>
-                                            <td>
-                                    ';
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="mb-0">Products</h4>
+        <a href="product-add.php" class="btn btn-sm" style="background:var(--accent);color:#000;">Add Product</a>
+    </div>
 
-                                    echo'
-                                        <button class="btn bg-dark text-light" onclick="window.location.href=\'product-details.php?product_id='.$row['id'].'\'">View</button>
+    <div class="table-responsive">
+        <table class="table table-hover" id="datatable">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Name</th>
+                    <th>Type</th>
+                    <th>Duration</th>
+                    <th>Questions</th>
+                    <th>Sets</th>
+                    <th>Price</th>
+                    <th>Status</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+            <?php foreach ($products as $p): ?>
+                <tr>
+                    <td><?= $p['id'] ?></td>
+                    <td><?= htmlspecialchars($p['name'], ENT_QUOTES, 'UTF-8') ?></td>
+                    <td><?= $p['is_practice'] ? 'Practice' : 'Mock Exam' ?></td>
+                    <td><?= $p['duration_minutes'] ?> min</td>
+                    <td><?= $p['total_questions'] ?></td>
+                    <td><?= $p['is_practice'] ? '—' : $p['sets'] ?></td>
+                    <td>₦<?= number_format((float)$p['price'], 2) ?></td>
+                    <td>
+                        <span class="badge <?= $p['status'] === 'active' ? 'bg-success' : 'bg-secondary' ?>">
+                            <?= ucfirst($p['status']) ?>
+                        </span>
+                    </td>
+                    <td>
+                        <a href="product-details.php?product_id=<?= $p['id'] ?>" class="btn btn-sm btn-dark">View</a>
+                    </td>
+                </tr>
+            <?php endforeach; ?>
+            </tbody>
+        </table>
+    </div>
 
-                                        <button class="btn bg-success text-light" onclick="window.location.href=\'discussion.php?product_id='.$row['id'].'\'">Discussion</button>
-                                    ';
-                                    echo'
-                                            </td>
-                                        </tr>
-                                    ';
+<?php else: ?>
 
-                                    
-                                        
-                                }
-                            }
-                        ?>
-                        </tbody>
-                    </table>
+    <?php if (!empty($mock_products)): ?>
+        <h5 class="mb-3" style="color:var(--accent);">Mock Exams</h5>
+        <div class="row mb-4">
+        <?php foreach ($mock_products as $p): ?>
+            <div class="col-md-4 col-sm-6 mb-3">
+                <div class="card h-100" style="background:#13131a;border:1px solid #2a2a3a;">
+                    <div class="card-body">
+                        <h6 class="card-title" style="color:var(--accent);">
+                            <?= htmlspecialchars($p['name'], ENT_QUOTES, 'UTF-8') ?>
+                        </h6>
+                        <p class="mb-1 small text-muted">
+                            <?= $p['duration_minutes'] ?> min &bull;
+                            <?= $p['total_questions'] ?> questions &bull;
+                            <?= $p['sets'] ?> set<?= $p['sets'] > 1 ? 's' : '' ?>
+                        </p>
+                        <p class="mb-3" style="color:var(--accent);font-weight:600;">
+                            ₦<?= number_format((float)$p['price'], 2) ?>
+                        </p>
+                        <a href="product-details.php?product_id=<?= $p['id'] ?>"
+                           class="btn btn-sm btn-outline-secondary me-1">Details</a>
+                        <a href="https://wa.me/2348169321558?text=<?= rawurlencode('I want to purchase: ' . $p['name'] . '. My username is: ' . $username) ?>"
+                           target="_blank"
+                           class="btn btn-sm"
+                           style="background:var(--accent);color:#000;">Purchase</a>
+                    </div>
                 </div>
             </div>
+        <?php endforeach; ?>
         </div>
-    <?php
-        } 
-    ?>
+    <?php endif; ?>
 
-    <!-- for student -->
-    <!-- for student -->
-    <!-- for student -->
-    <?php
-        if($type =="student"){
-    ?>
-        <div class="container-fluid">
-            <div class="row">
-                    <?php
-                        $get_product_tag = mysqli_query($conn,"SELECT * FROM `products` WHERE `status`='live' GROUP BY `tag` ");
-
-                        while ($row = mysqli_fetch_assoc($get_product_tag)) {
-
-                            if($row['tag'] !== "demo" && $row['tag'] !=="practice"){
-                                echo'
-                                    <h4 style="text-transform:uppercase; color:var(--primary);">'.$row['tag'].'</h4>
-                                    <hr>
-                                ';
-                                $get_product = mysqli_query($conn, "SELECT * FROM `products` WHERE `tag` = '".$row['tag']."' AND `status` = 'live'  ");
-    
-                                foreach ($get_product as $key => $value) {
-                                    echo'
-                                        <div class="col-md-4 mb-5 p-2 border shadow rounded mx-auto">
-                                            <h5>'.$value['name'].'</h5>
-                                            <div><strong>Product Id: </strong>'.$value['id'].'</div>
-
-                                            <button class="btn text-light" onclick="window.location.href=\'product-details.php?product_id='.$value['id'].'\'" style="background:var(--primary);">View</button>
-
-                                            <button class="btn btn-success" onclick="window.open(\'https://wa.me/9779700186061?text='.rawurlencode('I want to buy the product: '.$value['name'].' and My username is: '.$username).'\', \'_blank\');">Purchase</button>
-
-                                        </div>
-                                    ';
-                                }
-                            }
-                        }
-                    ?>
+    <?php if (!empty($practice_products)): ?>
+        <h5 class="mb-3" style="color:var(--accent);">Practice</h5>
+        <div class="row">
+        <?php foreach ($practice_products as $p): ?>
+            <div class="col-md-4 col-sm-6 mb-3">
+                <div class="card h-100" style="background:#13131a;border:1px solid #2a2a3a;">
+                    <div class="card-body">
+                        <h6 class="card-title" style="color:var(--accent);">
+                            <?= htmlspecialchars($p['name'], ENT_QUOTES, 'UTF-8') ?>
+                        </h6>
+                        <p class="mb-1 small text-muted">
+                            <?= $p['duration_minutes'] ?> min &bull;
+                            <?= $p['total_questions'] ?> questions
+                        </p>
+                        <p class="mb-3" style="color:var(--accent);font-weight:600;">
+                            ₦<?= number_format((float)$p['price'], 2) ?>
+                        </p>
+                        <a href="product-details.php?product_id=<?= $p['id'] ?>"
+                           class="btn btn-sm btn-outline-secondary me-1">Details</a>
+                        <a href="https://wa.me/2348169321558?text=<?= rawurlencode('I want to purchase: ' . $p['name'] . '. My username is: ' . $username) ?>"
+                           target="_blank"
+                           class="btn btn-sm"
+                           style="background:var(--accent);color:#000;">Purchase</a>
+                    </div>
+                </div>
             </div>
+        <?php endforeach; ?>
         </div>
-    <?php
-        }
-    ?>
+    <?php endif; ?>
 
-    
+    <?php if (empty($products)): ?>
+        <p class="text-muted">No products available at the moment.</p>
+    <?php endif; ?>
 
-    <?php
-        include("src/inc/footer.php");
-    ?>
+<?php endif; ?>
+
+</div>
+
+<?php include("inc/footer.php"); ?>
 </body>
 </html>
