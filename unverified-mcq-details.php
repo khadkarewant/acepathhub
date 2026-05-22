@@ -7,38 +7,69 @@ if (!has_role(ROLE_ADMIN) && !has_role(ROLE_DATA_ENTRY)) {
     exit;
 }
 
-if (!isset($_GET['topic_id']) || !ctype_digit($_GET['topic_id'])) {
-    header('Location: unverified-mcqs.php');
-    exit;
-}
-$topic_id = (int)$_GET['topic_id'];
+$topic_id      = isset($_GET['topic_id'])      && ctype_digit($_GET['topic_id'])      ? (int)$_GET['topic_id']      : 0;
+$past_paper_id = isset($_GET['past_paper_id']) && ctype_digit($_GET['past_paper_id']) ? (int)$_GET['past_paper_id'] : 0;
 
-// 1. Validate topic + breadcrumb
-$stmt = mysqli_prepare($conn,
-    'SELECT t.id, t.name AS topic_name, s.name AS subject_name, eb.name AS exam_body_name
-     FROM topics t
-     JOIN subjects s     ON s.id  = t.subject_id
-     JOIN exam_bodies eb ON eb.id = s.exam_body_id
-     WHERE t.id = ?');
-mysqli_stmt_bind_param($stmt, 'i', $topic_id);
-mysqli_stmt_execute($stmt);
-$res   = mysqli_stmt_get_result($stmt);
-$topic = mysqli_fetch_assoc($res);
-mysqli_free_result($res);
-mysqli_stmt_close($stmt);
-
-if (!$topic) {
+if ($topic_id === 0 && $past_paper_id === 0) {
     header('Location: unverified-mcqs.php');
     exit;
 }
 
-// 2. Unverified sets for this topic — admin sees all, data entry sees own
-$sql = 'SELECT qs.id, qs.source, qs.image_path, qs.passage_text, qs.created_by,
-               COUNT(q.id)  AS total_questions,
-               MIN(q.id)    AS first_question_id
+// 1. Validate + breadcrumb
+$topic      = null;
+$past_paper = null;
+
+if ($past_paper_id > 0) {
+    $stmt = mysqli_prepare($conn,
+        'SELECT pp.id, pp.year, s.name AS subject_name, eb.name AS exam_body_name
+         FROM past_papers pp
+         JOIN subjects s     ON s.id  = pp.subject_id
+         JOIN exam_bodies eb ON eb.id = s.exam_body_id
+         WHERE pp.id = ? LIMIT 1');
+    mysqli_stmt_bind_param($stmt, 'i', $past_paper_id);
+    mysqli_stmt_execute($stmt);
+    $res        = mysqli_stmt_get_result($stmt);
+    $past_paper = mysqli_fetch_assoc($res);
+    mysqli_free_result($res);
+    mysqli_stmt_close($stmt);
+
+    if (!$past_paper) {
+        header('Location: unverified-mcqs.php');
+        exit;
+    }
+} else {
+    $stmt = mysqli_prepare($conn,
+        'SELECT t.id, t.name AS topic_name, s.name AS subject_name, eb.name AS exam_body_name
+         FROM topics t
+         JOIN subjects s     ON s.id  = t.subject_id
+         JOIN exam_bodies eb ON eb.id = s.exam_body_id
+         WHERE t.id = ? LIMIT 1');
+    mysqli_stmt_bind_param($stmt, 'i', $topic_id);
+    mysqli_stmt_execute($stmt);
+    $res   = mysqli_stmt_get_result($stmt);
+    $topic = mysqli_fetch_assoc($res);
+    mysqli_free_result($res);
+    mysqli_stmt_close($stmt);
+
+    if (!$topic) {
+        header('Location: unverified-mcqs.php');
+        exit;
+    }
+}
+
+// 2. Unverified sets — admin sees all, data entry sees own
+$sql = 'SELECT qs.id, qs.source, qs.image_path, qs.passage_text, qs.question_no, qs.created_by,
+        COUNT(q.id) AS total_questions,
+        MIN(q.id)   AS first_question_id
         FROM question_sets qs
         LEFT JOIN questions q ON q.question_set_id = qs.id
-        WHERE qs.topic_id = ? AND qs.verified = 0';
+        WHERE qs.verified = 0';
+
+if ($past_paper_id > 0) {
+    $sql .= ' AND qs.past_paper_id = ?';
+} else {
+    $sql .= ' AND qs.topic_id = ?';
+}
 
 if (has_role(ROLE_DATA_ENTRY)) {
     $sql .= ' AND qs.created_by = ?';
@@ -48,10 +79,12 @@ $sql .= ' GROUP BY qs.id ORDER BY qs.id DESC';
 
 $stmt = mysqli_prepare($conn, $sql);
 
+$bind_id = $past_paper_id > 0 ? $past_paper_id : $topic_id;
+
 if (has_role(ROLE_DATA_ENTRY)) {
-    mysqli_stmt_bind_param($stmt, 'ii', $topic_id, $user_id);
+    mysqli_stmt_bind_param($stmt, 'ii', $bind_id, $user_id);
 } else {
-    mysqli_stmt_bind_param($stmt, 'i', $topic_id);
+    mysqli_stmt_bind_param($stmt, 'i', $bind_id);
 }
 
 mysqli_stmt_execute($stmt);
@@ -87,7 +120,8 @@ if (!empty($sets)) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Unverified — <?= htmlspecialchars($topic['topic_name']) ?></title>
+    <title>Unverified — <?= $past_paper ? htmlspecialchars($past_paper['subject_name'] . ' ' . $past_paper['year']) : htmlspecialchars($topic['topic_name']) ?></title>
+
     <?php include 'inc/links.php'; ?>
 </head>
 <body>
@@ -98,17 +132,24 @@ if (!empty($sets)) {
     <div class="qs-list-header">
         <div>
             <div class="qs-breadcrumb">
-                <?= htmlspecialchars($topic['exam_body_name']) ?>
-                &rsaquo; <?= htmlspecialchars($topic['subject_name']) ?>
-                &rsaquo; <?= htmlspecialchars($topic['topic_name']) ?>
+                <?php if ($past_paper): ?>
+                    <?= htmlspecialchars($past_paper['exam_body_name']) ?>
+                    &rsaquo; <?= htmlspecialchars($past_paper['subject_name']) ?>
+                    &rsaquo; <?= (int)$past_paper['year'] ?>
+                <?php else: ?>
+                    <?= htmlspecialchars($topic['exam_body_name']) ?>
+                    &rsaquo; <?= htmlspecialchars($topic['subject_name']) ?>
+                    &rsaquo; <?= htmlspecialchars($topic['topic_name']) ?>
+                <?php endif; ?>
             </div>
+
             <div class="qs-list-title">Unverified question sets</div>
         </div>
         <span class="qs-total-label"><?= count($sets) ?> set<?= count($sets) !== 1 ? 's' : '' ?></span>
     </div>
 
     <?php if (empty($sets)): ?>
-        <div class="qs-empty">No unverified question sets for this topic.</div>
+        <div class="qs-empty">No unverified question sets for this <?= $past_paper ? 'past paper' : 'topic' ?>.</div>
     <?php else: ?>
 
         <?php foreach ($sets as $set):
@@ -120,6 +161,9 @@ if (!empty($sets)) {
 
             <div class="qs-card-head">
                 <span class="qs-card-id">#<?= $set['id'] ?></span>
+                <?php if ($past_paper && $set['question_no']): ?>
+                    <span class="badge badge-meta">Q<?= (int)$set['question_no'] ?></span>
+                <?php endif; ?>
                 <span class="badge badge-source-<?= $set['source'] === 'past_paper' ? 'past' : 'practice' ?>">
                     <?= $set['source'] === 'past_paper' ? 'past paper' : 'practice' ?>
                 </span>
