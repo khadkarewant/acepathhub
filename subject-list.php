@@ -101,11 +101,13 @@ mysqli_stmt_close($stmt);
                                 <a href="subject-edit.php?id=<?= (int)$row['id'] ?>"
                                 class="btn btn-sm btn-outline-primary ms-1">Edit</a>
                                 <form method="POST" action="subject-delete.php" class="d-inline ms-1"
-                                    onsubmit="return confirm('Delete this subject?');">
-                                    <?= csrf_input(); ?>
-                                    <input type="hidden" name="id" value="<?= (int)$row['id'] ?>">
-                                    <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
-                                </form>
+                                onsubmit="return confirm('Delete this subject?');">
+                                <?= csrf_input(); ?>
+                                <input type="hidden" name="id" value="<?= (int)$row['id'] ?>">
+                                <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                            </form>
+                            <a href="past-paper-list.php?subject_id=<?= (int)$row['id'] ?>"
+                            class="btn btn-sm btn-outline-info ms-1">Past Papers</a>
                             <?php endif; ?>
                         </td>
                     </tr>
