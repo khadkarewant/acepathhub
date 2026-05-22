@@ -109,9 +109,6 @@
                         <a href="draft-mcqs.php"><i class="fa-solid fa-file-pen"></i> Drafted MCQs</a>
                     </div>
                     <div class="side-sublinks">
-                        <a href="updatable-mcqs.php"><i class="fa-solid fa-rotate"></i> Updatable MCQs</a>
-                    </div>
-                    <div class="side-sublinks">
                         <a href="unverified-mcqs.php"><i class="fa-solid fa-circle-exclamation"></i> Unverified MCQs</a>
                     </div>
                     <div class="side-sublinks">

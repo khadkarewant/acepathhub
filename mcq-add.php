@@ -6,32 +6,60 @@ require_role(ROLE_DATA_ENTRY);
 
 $topic_id = (int)($_GET['topic_id'] ?? 0);
 
-if ($topic_id === 0) {
+$past_paper_id = (int)($_GET['past_paper_id'] ?? 0);
+
+if ($topic_id === 0 && $past_paper_id === 0) {
     header("Location: home.php");
     exit;
 }
 
-$stmt = mysqli_prepare($conn, "SELECT id, name FROM topics WHERE id = ? LIMIT 1");
-mysqli_stmt_bind_param($stmt, "i", $topic_id);
-mysqli_stmt_execute($stmt);
-$topic_result = mysqli_stmt_get_result($stmt);
-$topic = mysqli_fetch_assoc($topic_result);
-mysqli_stmt_close($stmt);
-
-if (!$topic) {
-    header("Location: home.php");
-    exit;
-}
-
-$topic_name = $topic['name'];
 $errors = [];
+$source = 'practice';
+$past_paper = null;
+
+if ($past_paper_id > 0) {
+    $stmt = mysqli_prepare($conn,
+        "SELECT pp.id, pp.year, s.name AS subject_name, eb.name AS exam_body_name
+         FROM past_papers pp
+         JOIN subjects s ON s.id = pp.subject_id
+         JOIN exam_bodies eb ON eb.id = s.exam_body_id
+         WHERE pp.id = ? LIMIT 1");
+    mysqli_stmt_bind_param($stmt, "i", $past_paper_id);
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
+    $past_paper = mysqli_fetch_assoc($result);
+    mysqli_stmt_close($stmt);
+
+    if (!$past_paper) {
+        header("Location: home.php");
+        exit;
+    }
+
+    $source = 'past_paper';
+
+} else {
+    $stmt = mysqli_prepare($conn, "SELECT id, name FROM topics WHERE id = ? LIMIT 1");
+    mysqli_stmt_bind_param($stmt, "i", $topic_id);
+    mysqli_stmt_execute($stmt);
+    $topic_result = mysqli_stmt_get_result($stmt);
+    $topic = mysqli_fetch_assoc($topic_result);
+    mysqli_stmt_close($stmt);
+
+    if (!$topic) {
+        header("Location: home.php");
+        exit;
+    }
+
+    $topic_name = $topic['name'];
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     csrf_verify();
 
     $topic_id     = (int)($_POST['topic_id'] ?? 0);
+    $past_paper_id = (int)($_POST['past_paper_id'] ?? $past_paper_id);
+    $source = $past_paper_id > 0 ? 'past_paper' : 'practice';
     $passage_text = trim($_POST['passage_text'] ?? '');
-    $source       = 'practice';
     $questions    = $_POST['questions'] ?? [];
 
     // Image upload
@@ -58,18 +86,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $errors[] = "Question {$num}: select a valid answer.";
         }
     }
+    if ($past_paper_id > 0 && (int)($_POST['question_no'] ?? 0) <= 0) {
+        $errors[] = "Question No is required and must be greater than 0.";
+    }
 
     if (empty($errors)) {
         $created_on  = date('Y-m-d');
         $created_at  = date('H:i:s');
         $passage_val = $passage_text !== '' ? $passage_text : null;
 
+        $question_no  = $past_paper_id > 0 ? (int)($_POST['question_no'] ?? 0) : null;
+        $topic_id_val = $past_paper_id > 0 ? null : $topic_id;
+        $pp_id_val    = $past_paper_id > 0 ? $past_paper_id : null;
+
         $stmt = mysqli_prepare($conn,
-            "INSERT INTO question_sets (topic_id, image_path, passage_text, source, verified, status, created_by, created_on, created_at)
-             VALUES (?, ?, ?, ?, 0, 'draft', ?, ?, ?)"
+            "INSERT INTO question_sets (topic_id, image_path, passage_text, source, past_paper_id, question_no, verified, status, created_by, created_on, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, 0, 'draft', ?, ?, ?)"
         );
-        mysqli_stmt_bind_param($stmt, "isssiss",
-            $topic_id, $image_path, $passage_val, $source, $user_id, $created_on, $created_at
+        mysqli_stmt_bind_param($stmt, "isssiiiss",
+            $topic_id_val, $image_path, $passage_val, $source, $pp_id_val, $question_no, $user_id, $created_on, $created_at
         );
         mysqli_stmt_execute($stmt);
         $set_id = mysqli_insert_id($conn);
@@ -96,7 +131,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         mysqli_stmt_close($stmt);
 
-        header("Location: mcq-add.php?topic_id={$topic_id}&success=1");
+        if ($past_paper_id > 0) {
+            header("Location: mcq-add.php?past_paper_id={$past_paper_id}&success=1");
+        } else {
+            header("Location: mcq-add.php?topic_id={$topic_id}&success=1");
+        }
         exit;
     }
 }
@@ -133,12 +172,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <?= csrf_input(); ?>
 
                 <input type="hidden" name="topic_id" value="<?= $topic_id ?>">
+                <?php if ($past_paper_id > 0): ?>
+                    <input type="hidden" name="past_paper_id" value="<?= $past_paper_id ?>">
+                <?php endif; ?>
 
                 <div class="mb-3">
-                    <label class="form-label">Topic</label>
-                    <input type="text" class="form-control"
-                           value="<?= htmlspecialchars($topic_name, ENT_QUOTES, 'UTF-8') ?>" disabled>
+                    <?php if ($past_paper_id > 0): ?>
+                        <label class="form-label">Past Paper</label>
+                        <input type="text" class="form-control"
+                               value="<?= htmlspecialchars($past_paper['exam_body_name'] . ' — ' . $past_paper['subject_name'] . ' — ' . $past_paper['year'], ENT_QUOTES, 'UTF-8') ?>" disabled>
+                    <?php else: ?>
+                        <label class="form-label">Topic</label>
+                        <input type="text" class="form-control"
+                               value="<?= htmlspecialchars($topic_name, ENT_QUOTES, 'UTF-8') ?>" disabled>
+                    <?php endif; ?>
                 </div>
+
+                <?php if ($past_paper_id > 0): ?>
+                <div class="mb-3">
+                    <label class="form-label">Question No <span class="text-danger">*</span></label>
+                    <input type="number" name="question_no" class="form-control"
+                           value="<?= (int)($_POST['question_no'] ?? '') ?>" min="1" required>
+                </div>
+                <?php endif; ?>
 
                 <div class="mb-3">
                     <label class="form-label">Image <small class="text-muted">(optional, max 2MB)</small></label>
