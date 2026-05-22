@@ -166,7 +166,7 @@ if (!empty($sets)) {
                             </div>
                             <?php if ($more > 0): ?>
                                 <div class="qs-more-hint">
-                                    + <?= $more ?> more question<?= $more > 1 ? 's' : '' ?> &mdash; view details
+                                    + <?= $more ?> more question<?= $more > 1 ? 's' : '' ?> in this set.
                                 </div>
                             <?php endif; ?>
                         </div>
@@ -177,8 +177,7 @@ if (!empty($sets)) {
             </div>
 
             <div class="qs-card-footer">
-                <a href="mcq-details.php?question_set_id=<?= $set['id'] ?>" class="btn-qs-gold">
-                    Details
+                <a href="mcq-details.php?question_set_id=<?= $set['id'] ?>&ref=qsl&topic_id=<?= $topic_id ?>" class="btn-qs-gold">
                 </a>
                 <span class="qs-creator">user #<?= (int)$set['created_by'] ?></span>
             </div>
