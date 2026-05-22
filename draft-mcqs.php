@@ -70,7 +70,7 @@ if ($active_tab === 'past_paper') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Draft MCQs</title>
+    <title>Verified MCQs</title>
     <?php include 'inc/links.php'; ?>
 </head>
 <body>
@@ -79,7 +79,7 @@ if ($active_tab === 'past_paper') {
 <div class="container-fluid">
 
     <div class="qs-list-header">
-        <div class="qs-list-title">Draft question sets</div>
+        <div class="qs-list-title">Verified question sets</div>
     </div>
 
     <form method="GET" id="ebForm">
@@ -109,7 +109,7 @@ if ($active_tab === 'past_paper') {
     <?php if ($active_tab === 'practice'): ?>
 
         <?php if (empty($topics)): ?>
-            <div class="qs-empty">No draft question sets for this exam body.</div>
+            <div class="qs-empty">No verified question sets for this exam body.</div>
         <?php else: ?>
             <?php foreach ($topics as $t): ?>
             <div class="uv-topic-row"
@@ -123,7 +123,7 @@ if ($active_tab === 'past_paper') {
     <?php else: ?>
 
         <?php if (empty($past_papers)): ?>
-            <div class="qs-empty">No draft past paper question sets for this exam body.</div>
+            <div class="qs-empty">No verified past paper question sets for this exam body.</div>
         <?php else: ?>
             <?php foreach ($past_papers as $pp): ?>
             <div class="uv-topic-row"

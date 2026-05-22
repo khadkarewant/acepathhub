@@ -106,7 +106,7 @@
                 </a>
                 <div class="side-submenu">
                     <div class="side-sublinks">
-                        <a href="draft-mcqs.php"><i class="fa-solid fa-file-pen"></i> Drafted MCQs</a>
+                        <a href="draft-mcqs.php"><i class="fa-solid fa-circle-check"></i> Verified MCQs</a>
                     </div>
                     <div class="side-sublinks">
                         <a href="unverified-mcqs.php"><i class="fa-solid fa-circle-exclamation"></i> Unverified MCQs</a>

@@ -123,13 +123,13 @@ if (!empty($sets)) {
                     &rsaquo; <?= htmlspecialchars($topic['topic_name']) ?>
                 <?php endif; ?>
                 </div>
-            <div class="qs-list-title">Draft question sets</div>
+            <div class="qs-list-title">Verified question sets</div>
         </div>
         <span class="qs-total-label"><?= count($sets) ?> set<?= count($sets) !== 1 ? 's' : '' ?></span>
     </div>
 
     <?php if (empty($sets)): ?>
-        <div class="qs-empty">No draft question sets for this <?= $past_paper ? 'past paper' : 'topic' ?>.</div>
+        <div class="qs-empty">No verified question sets for this <?= $past_paper ? 'past paper' : 'topic' ?>.</div>
     <?php else: ?>
 
         <?php foreach ($sets as $set):
