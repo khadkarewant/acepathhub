@@ -4,7 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . "/src/db/db_conn.php";
 require_once __DIR__ . "/src/db/session.php";
 
-require_role([ROLE_ADMIN]);
+require_role(ROLE_ADMIN);
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     header("Location: products.php"); exit;
