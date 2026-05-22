@@ -1,286 +1,443 @@
 <?php
-include("src/db/db_conn.php");
-include("src/db/session.php");
-include("src/db/privileges.php");
+declare(strict_types=1);
 
-if(isset($_GET['product_id']) && $_GET['product_id'] !== ""){
+require_once __DIR__ . "/src/db/db_conn.php";
+require_once __DIR__ . "/src/db/session.php";
 
-    $get_product_details = mysqli_query($conn, "SELECT * FROM `products` WHERE `id` = '".$_GET['product_id']."' ");
+require_role([ROLE_ADMIN, ROLE_STUDENT]);
 
-    if(mysqli_num_rows($get_product_details) == 0){
-        header("Location: home.php"); exit;
-
-    }
-
-    while ($row = mysqli_fetch_assoc($get_product_details)) {
-        $product_id = $row['id'];
-        $course_id = $row['course_id'];
-        $product_name = $row['name'];
-        $description = $row['description'];
-        $sets = $row['sets'];
-        $price =  $row['price'];
-        $level_1 =  $row['level_1'];
-        $level_2 =  $row['level_2'];
-        $created_by = $row['created_by'];
-        $created_on =  $row['created_on'];
-        $created_at =  $row['created_at'];
-        $status = $row['status'];
-        $is_practice = $row['is_practice'];
-
-        $get_course_name = mysqli_query($conn, "SELECT * FROM `courses` WHERE `id` = '".$course_id."' ");
-        foreach ($get_course_name as $key => $value) {
-            $course_name = $value['name'];
-        }   
-    }
-
-}else{
+$product_id = isset($_GET['product_id']) ? (int)$_GET['product_id'] : 0;
+if ($product_id <= 0) {
     header("Location: products.php"); exit;
 }
 
-// Handle Group Form Submission
-if(isset($_POST['add_group'])){
-    csrf_verify();
-    $group_name = htmlentities($_POST['group_name']);
-    $sort_order = intval($_POST['sort_order']);
+// Fetch product
+$stmt = $conn->prepare("
+    SELECT id, name, is_practice, duration_minutes, total_questions,
+           mark_per_question, negative_mark_percent, sets, price, status
+    FROM products
+    WHERE id = ?
+    LIMIT 1
+");
+$stmt->bind_param("i", $product_id);
+$stmt->execute();
+$product = $stmt->get_result()->fetch_assoc();
+$stmt->close();
 
-    $insert_group = mysqli_query($conn, "INSERT INTO product_topic_groups (product_id, group_name, sort_order) 
-                                        VALUES ('$product_id', '$group_name', '$sort_order')");
-    if($insert_group){
-        $msg = '<p style="color:green;">Group added successfully.</p>';
-    } else {
-        $msg = '<p style="color:red;">Failed to add group.</p>';
+if (!$product) {
+    header("Location: products.php"); exit;
+}
+
+// Student can only see active products
+if (has_role(ROLE_STUDENT) && $product['status'] !== 'active') {
+    header("Location: products.php"); exit;
+}
+
+$is_practice = (int)$product['is_practice'];
+
+// Fetch subjects linked to this product
+$stmt = $conn->prepare("
+    SELECT s.id, s.name
+    FROM product_subjects ps
+    JOIN subjects s ON s.id = ps.subject_id
+    WHERE ps.product_id = ?
+    ORDER BY s.name ASC
+");
+$stmt->bind_param("i", $product_id);
+$stmt->execute();
+$subjects = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+$stmt->close();
+
+$subject_ids = array_column($subjects, 'id');
+
+// Fetch all topics under these subjects (for group assignment)
+$topics_by_subject = [];
+if (!empty($subject_ids)) {
+    $placeholders = implode(',', array_fill(0, count($subject_ids), '?'));
+    $types        = str_repeat('i', count($subject_ids));
+    $stmt = $conn->prepare("
+        SELECT t.id, t.name, t.subject_id
+        FROM topics t
+        WHERE t.subject_id IN ($placeholders)
+        ORDER BY t.subject_id ASC, t.name ASC
+    ");
+    $stmt->bind_param($types, ...$subject_ids);
+    $stmt->execute();
+    $all_topics = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
+
+    foreach ($all_topics as $t) {
+        $topics_by_subject[$t['subject_id']][] = $t;
     }
 }
 
-// Handle Topic Mapping Submission
-if(isset($_POST['save_group_topics'])){
+$msg = '';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && has_role(ROLE_ADMIN)) {
     csrf_verify();
-    $group_id = intval($_POST['group_id']);
-    $selected_topics = $_POST['topics']; // array of topic_ids
 
-    // Remove existing topics for this group
-    mysqli_query($conn, "DELETE FROM product_topics WHERE product_id = '$product_id' AND group_id = '$group_id'");
+    // --- Add exam group (mock) ---
+    if (isset($_POST['add_exam_group'])) {
+        $group_name     = trim((string)($_POST['group_name'] ?? ''));
+        $question_count = isset($_POST['question_count']) ? (int)$_POST['question_count'] : 0;
 
-    // Insert selected topics
-    foreach($selected_topics as $topic_id){
-        $topic_id = intval($topic_id);
-        mysqli_query($conn, "INSERT INTO product_topics (product_id, group_id, topic_id) VALUES ('$product_id', '$group_id', '$topic_id')");
+        if ($group_name === '' || $question_count <= 0) {
+            $msg = '<p class="text-danger">Group name and question count are required.</p>';
+        } else {
+            $stmt = $conn->prepare("
+                INSERT INTO exam_groups (product_id, name, question_count)
+                VALUES (?, ?, ?)
+            ");
+            $stmt->bind_param("isi", $product_id, $group_name, $question_count);
+            $msg = $stmt->execute()
+                ? '<p class="text-success">Exam group added.</p>'
+                : '<p class="text-danger">Failed to add exam group.</p>';
+            $stmt->close();
+        }
     }
 
-    $msg_topics = '<p style="color:green;">Topics updated for group successfully.</p>';
+    // --- Add practice group ---
+    if (isset($_POST['add_practice_group'])) {
+        $group_name = trim((string)($_POST['group_name'] ?? ''));
+        $sort_order = isset($_POST['sort_order']) ? (int)$_POST['sort_order'] : 0;
+
+        if ($group_name === '') {
+            $msg = '<p class="text-danger">Group name is required.</p>';
+        } else {
+            $stmt = $conn->prepare("
+                INSERT INTO practice_groups (product_id, name, sort_order)
+                VALUES (?, ?, ?)
+            ");
+            $stmt->bind_param("isi", $product_id, $group_name, $sort_order);
+            $msg = $stmt->execute()
+                ? '<p class="text-success">Practice group added.</p>'
+                : '<p class="text-danger">Failed to add practice group.</p>';
+            $stmt->close();
+        }
+    }
+
+    // --- Save exam group topics ---
+    if (isset($_POST['save_exam_group_topics'])) {
+        $group_id       = isset($_POST['group_id']) ? (int)$_POST['group_id'] : 0;
+        $selected_topics = isset($_POST['topics']) && is_array($_POST['topics'])
+            ? array_map('intval', $_POST['topics'])
+            : [];
+
+        if ($group_id <= 0) {
+            $msg = '<p class="text-danger">Invalid group.</p>';
+        } else {
+            $conn->begin_transaction();
+            try {
+                $stmt = $conn->prepare("DELETE FROM exam_group_topics WHERE exam_group_id = ?");
+                $stmt->bind_param("i", $group_id);
+                $stmt->execute();
+                $stmt->close();
+
+                if (!empty($selected_topics)) {
+                    $stmt = $conn->prepare("
+                        INSERT IGNORE INTO exam_group_topics (exam_group_id, topic_id)
+                        VALUES (?, ?)
+                    ");
+                    foreach ($selected_topics as $tid) {
+                        $stmt->bind_param("ii", $group_id, $tid);
+                        $stmt->execute();
+                    }
+                    $stmt->close();
+                }
+
+                $conn->commit();
+                $msg = '<p class="text-success">Topics updated.</p>';
+            } catch (Throwable $e) {
+                $conn->rollback();
+                $msg = '<p class="text-danger">Failed to update topics.</p>';
+            }
+        }
+    }
+
+    // --- Save practice group topics ---
+    if (isset($_POST['save_practice_group_topics'])) {
+        $group_id        = isset($_POST['group_id']) ? (int)$_POST['group_id'] : 0;
+        $selected_topics = isset($_POST['topics']) && is_array($_POST['topics'])
+            ? array_map('intval', $_POST['topics'])
+            : [];
+
+        if ($group_id <= 0) {
+            $msg = '<p class="text-danger">Invalid group.</p>';
+        } else {
+            $conn->begin_transaction();
+            try {
+                $stmt = $conn->prepare("DELETE FROM practice_group_topics WHERE practice_group_id = ?");
+                $stmt->bind_param("i", $group_id);
+                $stmt->execute();
+                $stmt->close();
+
+                if (!empty($selected_topics)) {
+                    $stmt = $conn->prepare("
+                        INSERT IGNORE INTO practice_group_topics (practice_group_id, topic_id)
+                        VALUES (?, ?)
+                    ");
+                    foreach ($selected_topics as $tid) {
+                        $stmt->bind_param("ii", $group_id, $tid);
+                        $stmt->execute();
+                    }
+                    $stmt->close();
+                }
+
+                $conn->commit();
+                $msg = '<p class="text-success">Topics updated.</p>';
+            } catch (Throwable $e) {
+                $conn->rollback();
+                $msg = '<p class="text-danger">Failed to update topics.</p>';
+            }
+        }
+    }
+
+    // PRG
+    header("Location: product-details.php?product_id=" . $product_id . "&ok=1");
+    exit;
 }
+
+// Fetch groups AFTER post handling (so page reflects latest state)
+$groups = [];
+if ($is_practice === 0) {
+    $stmt = $conn->prepare("
+        SELECT id, name, question_count
+        FROM exam_groups
+        WHERE product_id = ?
+        ORDER BY id ASC
+    ");
+    $stmt->bind_param("i", $product_id);
+    $stmt->execute();
+    $groups = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
+
+    // Fetch assigned topics per group
+    foreach ($groups as &$g) {
+        $stmt = $conn->prepare("
+            SELECT t.id, t.name
+            FROM exam_group_topics egt
+            JOIN topics t ON t.id = egt.topic_id
+            WHERE egt.exam_group_id = ?
+        ");
+        $stmt->bind_param("i", $g['id']);
+        $stmt->execute();
+        $g['topics'] = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+    }
+    unset($g);
+} else {
+    $stmt = $conn->prepare("
+        SELECT id, name, sort_order
+        FROM practice_groups
+        WHERE product_id = ?
+        ORDER BY sort_order ASC, id ASC
+    ");
+    $stmt->bind_param("i", $product_id);
+    $stmt->execute();
+    $groups = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
+
+    foreach ($groups as &$g) {
+        $stmt = $conn->prepare("
+            SELECT t.id, t.name
+            FROM practice_group_topics pgt
+            JOIN topics t ON t.id = pgt.topic_id
+            WHERE pgt.practice_group_id = ?
+        ");
+        $stmt->bind_param("i", $g['id']);
+        $stmt->execute();
+        $g['topics'] = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+    }
+    unset($g);
+}
+
+$ok = isset($_GET['ok']);
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Product Details</title>
-<?php include("src/inc/links.php"); ?>
+<title><?= htmlspecialchars($product['name'], ENT_QUOTES, 'UTF-8') ?> — Details</title>
+<?php include("inc/links.php"); ?>
 </head>
 <body>
-<?php include("src/inc/header.php"); ?>
+<?php include("inc/header.php"); ?>
 
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-md-12 p-1 table-responsive">
-            <table class="table">
-                <tbody>
-                    <tr>
-                        <th>Product Name</th>
-                        <td><?php echo $product_name ?></td>
-                    </tr>
-                    <tr>
-                        <th>Course</th>
-                        <td><?php echo $course_name ?></td>
-                    </tr>
-                    <tr>
-                        <th>Level I Questions</th>
-                        <td> <?php echo $level_1 ?></td>
-                    </tr>
-                    <tr>
-                        <th>Level II Questions</th>
-                        <td> <?php echo $level_2 ?></td>
-                    </tr>
-                    <tr>
-                        <th>Negative Marking</th>
-                        <td>Yes (20%)</td>
-                    </tr>
-                    <tr>
-                        <th>Exam Sets Available</th>
-                        <td> <?php echo $sets ?></td>
-                    </tr>
-                    <tr>
-                        <th>Total Price (in NPR)</th>
-                        <td> <?php echo $price ?>/-</td>
-                    </tr>
-                </tbody>
-            </table>
+<div class="container-fluid p-3">
 
-            <?php
-                if($type == "student"){
-                    echo '
-                    <button class="btn bg-success"
-                            style="background:var(--primary);color:white;"
-                            onclick="window.open(\'src/pdf/'.$product_id.'.pdf\', \'_blank\')">
-                        View Syllabus
-                    </button>
-                    ';
-                }
+    <?php if ($ok): ?>
+        <div class="alert alert-success alert-dismissible">Saved. <button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+    <?php endif; ?>
+    <?= $msg ?>
 
-                if($modify_product == "true"){
-                    echo'
-                        <button class="bg-info" onclick="window.location.href=\'update-product.php?product_id='.$_GET['product_id'].'\'">Update Product</button>
-                    ';
-                }
+    <!-- Product Info -->
+    <div class="table-responsive mb-3">
+        <table class="table">
+            <tbody>
+                <tr><th>Name</th><td><?= htmlspecialchars($product['name'], ENT_QUOTES, 'UTF-8') ?></td></tr>
+                <tr><th>Type</th><td><?= $is_practice ? 'Practice' : 'Mock Exam' ?></td></tr>
+                <tr><th>Duration</th><td><?= $product['duration_minutes'] ?> minutes</td></tr>
+                <tr><th>Total Questions</th><td><?= $product['total_questions'] ?></td></tr>
+                <tr><th>Mark Per Question</th><td><?= $product['mark_per_question'] ?></td></tr>
+                <tr><th>Negative Mark</th><td><?= $product['negative_mark_percent'] ?>%</td></tr>
+                <?php if (!$is_practice): ?>
+                <tr><th>Sets</th><td><?= $product['sets'] ?></td></tr>
+                <?php endif; ?>
+                <tr><th>Price</th><td>₦<?= number_format((float)$product['price'], 2) ?></td></tr>
+                <tr>
+                    <th>Status</th>
+                    <td>
+                        <span class="badge <?= $product['status'] === 'active' ? 'bg-success' : 'bg-secondary' ?>">
+                            <?= ucfirst($product['status']) ?>
+                        </span>
+                    </td>
+                </tr>
+                <tr>
+                    <th>Subjects</th>
+                    <td><?= !empty($subjects) ? implode(', ', array_column($subjects, 'name')) : '—' ?></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
 
-                if($status == "draft" && $modify_product == "true"){
-                ?>
+    <!-- Action Buttons -->
+    <div class="mb-4">
+        <?php if (has_role(ROLE_STUDENT)): ?>
+            <a href="inc/pdf/<?= $product_id ?>.pdf"
+               target="_blank"
+               class="btn btn-sm btn-outline-secondary me-1">View Syllabus</a>
+            <a href="https://wa.me/2348169321558?text=<?= rawurlencode('I want to purchase: ' . $product['name'] . '. My username is: ' . $username) ?>"
+               target="_blank"
+               class="btn btn-sm"
+               style="background:var(--accent);color:#000;">Purchase</a>
+        <?php endif; ?>
+
+        <?php if (has_role(ROLE_ADMIN)): ?>
+            <a href="product-update.php?product_id=<?= $product_id ?>"
+               class="btn btn-sm btn-dark me-1">Update</a>
+
+            <?php if ($product['status'] === 'inactive'): ?>
                 <form method="POST" action="product-status-change.php" style="display:inline;">
-                        <?= csrf_input(); ?>
-                        <input type="hidden" name="product_id" value="<?= (int)$product_id; ?>">
-                        <input type="hidden" name="status" value="live">
-                        <button type="submit" class="bg-warning">Make Live</button>
-                    </form>
-                <?php
-                }elseif($status == "live" && $modify_product == "true"){
-                ?>
-                    <form method="POST" action="product-status-change.php" style="display:inline;">
-                    <?= csrf_input(); ?>
-                    <input type="hidden" name="product_id" value="<?= (int)$product_id; ?>">
-                    <input type="hidden" name="status" value="draft">
-                    <button type="submit" class="bg-success text-light">Make Offline</button>
+                    <?= csrf_input() ?>
+                    <input type="hidden" name="product_id" value="<?= $product_id ?>">
+                    <input type="hidden" name="status" value="active">
+                    <button type="submit" class="btn btn-sm btn-success">Make Active</button>
                 </form>
-                <?php
-                }
-            ?>
-        </div>
+            <?php else: ?>
+                <form method="POST" action="product-status-change.php" style="display:inline;">
+                    <?= csrf_input() ?>
+                    <input type="hidden" name="product_id" value="<?= $product_id ?>">
+                    <input type="hidden" name="status" value="inactive">
+                    <button type="submit" class="btn btn-sm btn-secondary">Make Inactive</button>
+                </form>
+            <?php endif; ?>
+        <?php endif; ?>
+    </div>
 
-        <?php
-        if($type == "admin"){
-            ?>
-            <div class="col-md-12 p-1 mt-4 table-responsive">
-                <h6><?php echo ($is_practice == 1) ? "Topic Groups:" : "Question Pattern:"; ?></h6>
+    <!-- Groups Management (Admin only) -->
+    <?php if (has_role(ROLE_ADMIN)): ?>
+        <hr>
+        <h6><?= $is_practice ? 'Practice Groups' : 'Exam Groups' ?></h6>
 
-                <?php if($is_practice == 0): ?>
-                    <!-- Existing Question Pattern Logic -->
-                    <button class="bg-info" onclick="window.location.href='add-question-pattern.php?product_id=<?php echo $product_id ?>'">Add Question Pattern</button>
-                    <hr>
-                    <table class="table">
-                        <thead>
-                            <th>id</th>
-                            <th>Pattern Name</th>
-                            <th>No. of Topics</th>
-                            <th>Question Weight</th>
-                            <th>Action</th>
-                        </thead>
-                        <tbody>
-                            <?php
-                                $get_question_pattern = mysqli_query($conn, "SELECT * FROM `question_patterns` WHERE `product_id` = '".$product_id."' ");
-                                while ($row = mysqli_fetch_assoc($get_question_pattern)) {
-                                    $get_question_topics = mysqli_query($conn, "SELECT * FROM `question_topics` WHERE `pattern_id` = '".$row['id']."' ");
-                                    $no_of_topics = mysqli_num_rows($get_question_topics);
-
-                                    echo'
-                                        <tr>
-                                            <td>'.$row['id'].'</td>
-                                            <td>'.$row['name'].'</td>
-                                            <td>'.$no_of_topics.'</td>
-                                            <td>'.$row['question_weight'].'</td>
-                                            <td>
-                                                <button style="background:var(--primary);color:white;" onclick="window.location.href=\'question-pattern-details.php?id='.$row['id'].'\'">View</button>
-                                                <button class="bg-success text-light" onclick="window.location.href=\'update-question-pattern.php?pattern_id='.$row['id'].'\'">Update</button> ';
-                                            ?>
-                                                <form method="POST" action="delete-question-pattern.php" style="display:inline;">
-                                                    <?= csrf_input(); ?>
-                                                    <input type="hidden" name="pattern_id" value="<?= (int)$row['id']; ?>">
-                                                    <input type="hidden" name="product_id" value="<?= (int)$product_id; ?>">
-                                                    <button type="submit" style="background:red;color:white;">Delete</button>
-                                                </form>
-                                            <?php
-                                                echo'
-                                            </td>
-                                        </tr>
-                                    ';
-                                }
-                            ?>
-                        </tbody>
-                    </table>
+        <!-- Add Group Form -->
+        <form method="POST" class="mb-4">
+            <?= csrf_input() ?>
+            <div class="row g-2 align-items-end">
+                <div class="col-md-5">
+                    <label class="form-label small">Group Name</label>
+                    <input type="text" name="group_name" class="form-control form-control-sm" required>
+                </div>
+                <?php if (!$is_practice): ?>
+                <div class="col-md-3">
+                    <label class="form-label small">Question Count</label>
+                    <input type="number" name="question_count" min="1" class="form-control form-control-sm" required>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" name="add_exam_group"
+                            class="btn btn-sm w-100"
+                            style="background:var(--accent);color:#000;">Add Group</button>
+                </div>
                 <?php else: ?>
-                    <!-- Practice Product: Add Groups Form -->
-                    <?php if(isset($msg)) echo $msg; ?>
-                    <form action="" method="POST" class="mb-3">
-                        <?= csrf_input(); ?>
-                        <div class="row">
-                            <div class="col-md-6">
-                                <label>Group Name:</label>
-                                <input type="text" name="group_name" class="form-control" required>
-                            </div>
-                            <div class="col-md-4">
-                                <label>Sort Order:</label>
-                                <input type="number" name="sort_order" class="form-control" required>
-                            </div>
-                            <div class="col-md-2 d-flex align-items-end">
-                                <button type="submit" name="add_group" class="btn btn-primary w-100">Add Group</button>
-                            </div>
-                        </div>
-                    </form>
-
-                    <!-- Display Existing Groups with Topics -->
-                    <?php if(isset($msg_topics)) echo $msg_topics; ?>
-                    <?php
-                    $groups = mysqli_query($conn, "SELECT * FROM product_topic_groups WHERE product_id = '$product_id' ORDER BY sort_order");
-                    while($g = mysqli_fetch_assoc($groups)){
-                        $group_id = $g['id'];
-                        echo '<div class="card mb-3">';
-                        echo '<div class="card-header d-flex justify-content-between align-items-center">';
-                        echo '<span>'.$g['group_name'].' (Sort Order: '.$g['sort_order'].')</span>';
-                        echo '<button class="btn btn-sm btn-primary" onclick="document.getElementById(\'topics_form_'.$group_id.'\').classList.toggle(\'d-none\')">Add/Edit Topics</button>';
-                        echo '</div>';
-
-                        // Fetch assigned topics
-                        $assigned = mysqli_query($conn, "SELECT t.name, t.id FROM product_topics pt 
-                                                         JOIN topics t ON pt.topic_id = t.id 
-                                                         WHERE pt.product_id = '$product_id' AND pt.group_id = '$group_id'");
-                        $assigned_topics = [];
-                        while($a = mysqli_fetch_assoc($assigned)){
-                            $assigned_topics[$a['id']] = $a['name'];
-                        }
-
-                        // Show assigned topics
-                        echo '<div class="card-body">';
-                        if(count($assigned_topics) > 0){
-                            echo '<p><strong>Topics:</strong> '.implode(', ', $assigned_topics).'</p>';
-                        }else{
-                            echo '<p><strong>Topics:</strong> None assigned</p>';
-                        }
-
-                        // Topic selection form (hidden by default)
-                        echo '<form id="topics_form_'.$group_id.'" method="POST" class="d-none">';
-                        echo csrf_input();
-                        echo '<input type="hidden" name="group_id" value="'.$group_id.'">';
-                        echo '<select name="topics[]" class="form-control mb-2" multiple required>';
-                        $topics = mysqli_query($conn, "SELECT * FROM topics WHERE course_id = '$course_id' ORDER BY id");
-                        while($topic = mysqli_fetch_assoc($topics)){
-                            $selected = isset($assigned_topics[$topic['id']]) ? 'selected' : '';
-                            echo '<option value="'.$topic['id'].'" '.$selected.'>'.$topic['name'].'</option>';
-                        }
-                        echo '</select>';
-                        echo '<button type="submit" name="save_group_topics" class="btn btn-success btn-sm">Save Topics</button>';
-                        echo '</form>';
-                        echo '</div>'; // card-body
-                        echo '</div>'; // card
-                    }
-                    ?>
+                <div class="col-md-3">
+                    <label class="form-label small">Sort Order</label>
+                    <input type="number" name="sort_order" min="0" value="0" class="form-control form-control-sm">
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" name="add_practice_group"
+                            class="btn btn-sm w-100"
+                            style="background:var(--accent);color:#000;">Add Group</button>
+                </div>
                 <?php endif; ?>
             </div>
-            <?php
-        }
-        ?>
+        </form>
 
-    </div>
+        <!-- Existing Groups -->
+        <?php if (empty($groups)): ?>
+            <p class="text-muted small">No groups added yet.</p>
+        <?php endif; ?>
+
+        <?php foreach ($groups as $g): ?>
+            <div class="card mb-3" style="background:#13131a;border:1px solid #2a2a3a;">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span style="color:var(--accent);">
+                        <?= htmlspecialchars($g['name'], ENT_QUOTES, 'UTF-8') ?>
+                        <?php if (!$is_practice): ?>
+                            <small class="text-muted">(<?= $g['question_count'] ?> questions)</small>
+                        <?php else: ?>
+                            <small class="text-muted">(sort: <?= $g['sort_order'] ?>)</small>
+                        <?php endif; ?>
+                    </span>
+                    <button class="btn btn-sm btn-outline-secondary"
+                            onclick="document.getElementById('topics_form_<?= $g['id'] ?>').classList.toggle('d-none')">
+                        Edit Topics
+                    </button>
+                </div>
+                <div class="card-body">
+                    <p class="small mb-2">
+                        <strong>Topics:</strong>
+                        <?= !empty($g['topics'])
+                            ? htmlspecialchars(implode(', ', array_column($g['topics'], 'name')), ENT_QUOTES, 'UTF-8')
+                            : '<span class="text-muted">None assigned</span>' ?>
+                    </p>
+
+                    <!-- Topic assignment form -->
+                    <form id="topics_form_<?= $g['id'] ?>" method="POST" class="d-none">
+                        <?= csrf_input() ?>
+                        <input type="hidden" name="group_id" value="<?= $g['id'] ?>">
+                        <select name="topics[]" class="form-control form-control-sm mb-2" multiple size="8">
+                            <?php
+                            $assigned_ids = array_column($g['topics'], 'id');
+                            foreach ($topics_by_subject as $sub_id => $sub_topics):
+                                // Find subject name
+                                $sub_name = '';
+                                foreach ($subjects as $s) {
+                                    if ($s['id'] == $sub_id) { $sub_name = $s['name']; break; }
+                                }
+                            ?>
+                                <optgroup label="<?= htmlspecialchars($sub_name, ENT_QUOTES, 'UTF-8') ?>">
+                                <?php foreach ($sub_topics as $t): ?>
+                                    <option value="<?= $t['id'] ?>"
+                                        <?= in_array($t['id'], $assigned_ids) ? 'selected' : '' ?>>
+                                        <?= htmlspecialchars($t['name'], ENT_QUOTES, 'UTF-8') ?>
+                                    </option>
+                                <?php endforeach; ?>
+                                </optgroup>
+                            <?php endforeach; ?>
+                        </select>
+                        <button type="submit"
+                                name="<?= $is_practice ? 'save_practice_group_topics' : 'save_exam_group_topics' ?>"
+                                class="btn btn-sm btn-success">Save Topics</button>
+                    </form>
+                </div>
+            </div>
+        <?php endforeach; ?>
+
+    <?php endif; ?>
+
 </div>
 
-<?php include("src/inc/footer.php"); ?>
+<?php include("inc/footer.php"); ?>
 </body>
 </html>
