@@ -15,7 +15,7 @@ $page  = (isset($_GET['page']) && ctype_digit($_GET['page'])) ? max(1, (int)$_GE
 
 // 1. Topic breadcrumb — validate topic exists
 $stmt = mysqli_prepare($conn,
-    'SELECT t.name AS topic_name, s.name AS subject_name, eb.name AS exam_body_name
+    'SELECT t.subject_id, t.name AS topic_name, s.name AS subject_name, eb.name AS exam_body_name
      FROM topics t
      JOIN subjects s  ON s.id  = t.subject_id
      JOIN exam_bodies eb ON eb.id = s.exam_body_id
@@ -108,8 +108,12 @@ if (!empty($sets)) {
                 &rsaquo; <?= htmlspecialchars($topic['subject_name']) ?>
                 &rsaquo; <?= htmlspecialchars($topic['topic_name']) ?>
             </div>
-            <div class="qs-list-title">Published question sets</div>
+            <div class="d-flex align-items-center gap-2 mt-1">
+                <a href="topic-list.php?subject_id=<?= (int)$topic['subject_id'] ?>" class="btn-qs-sm">&larr; Back</a>
+                <div class="qs-list-title">Published question sets</div>
+            </div>
         </div>
+            
         <span class="qs-total-label">
             <?= $total ?> set<?= $total !== 1 ? 's' : '' ?>
         </span>
@@ -178,6 +182,7 @@ if (!empty($sets)) {
 
             <div class="qs-card-footer">
                 <a href="mcq-details.php?question_set_id=<?= $set['id'] ?>&ref=qsl&topic_id=<?= $topic_id ?>" class="btn-qs-gold">
+                    Details
                 </a>
                 <span class="qs-creator">user #<?= (int)$set['created_by'] ?></span>
             </div>

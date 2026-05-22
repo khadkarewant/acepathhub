@@ -123,8 +123,12 @@ if (!empty($sets)) {
                     &rsaquo; <?= htmlspecialchars($topic['topic_name']) ?>
                 <?php endif; ?>
                 </div>
-            <div class="qs-list-title">Verified question sets</div>
+            <div class="d-flex align-items-center gap-2 mt-1">
+                <a href="draft-mcqs.php" class="btn-qs-sm">&larr; Back</a>
+                <div class="qs-list-title">Verified question sets</div>
+            </div>
         </div>
+                
         <span class="qs-total-label"><?= count($sets) ?> set<?= count($sets) !== 1 ? 's' : '' ?></span>
     </div>
 
