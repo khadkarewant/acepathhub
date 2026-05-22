@@ -11,6 +11,32 @@ if (!isset($_GET['question_set_id']) || !ctype_digit($_GET['question_set_id'])) 
 }
 $question_set_id = (int)$_GET['question_set_id'];
 
+$ref               = $_GET['ref'] ?? '';
+$ref_topic_id      = isset($_GET['topic_id'])      && ctype_digit($_GET['topic_id'])      ? (int)$_GET['topic_id']      : 0;
+$ref_past_paper_id = isset($_GET['past_paper_id']) && ctype_digit($_GET['past_paper_id']) ? (int)$_GET['past_paper_id'] : 0;
+
+if ($ref === 'unverified') {
+    if ($ref_past_paper_id > 0) {
+        $back_url = 'unverified-mcq-details.php?past_paper_id=' . $ref_past_paper_id;
+    } elseif ($ref_topic_id > 0) {
+        $back_url = 'unverified-mcq-details.php?topic_id=' . $ref_topic_id;
+    } else {
+        $back_url = '';
+    }
+} elseif ($ref === 'draft') {
+    if ($ref_past_paper_id > 0) {
+        $back_url = 'draft-mcq-details.php?past_paper_id=' . $ref_past_paper_id;
+    } elseif ($ref_topic_id > 0) {
+        $back_url = 'draft-mcq-details.php?topic_id=' . $ref_topic_id;
+    } else {
+        $back_url = '';
+    }
+} elseif ($ref === 'qsl') {
+    $back_url = $ref_topic_id > 0 ? 'question-set-list.php?topic_id=' . $ref_topic_id : '';
+} else {
+    $back_url = '';
+}
+
 // 1. Fetch question_set + breadcrumb in one query
 $stmt = mysqli_prepare($conn,
     'SELECT qs.id, qs.source, qs.image_path, qs.passage_text,
@@ -18,13 +44,16 @@ $stmt = mysqli_prepare($conn,
             qs.past_paper_id, qs.question_no,
             t.name  AS topic_name,  t.id AS topic_id,
             s.name  AS subject_name,
-            eb.name AS exam_body_name
+            eb.name AS exam_body_name,
+            pp.year AS past_paper_year
      FROM question_sets qs
-     JOIN topics     t  ON t.id  = qs.topic_id
-     JOIN subjects   s  ON s.id  = t.subject_id
-     JOIN exam_bodies eb ON eb.id = s.exam_body_id
+     LEFT JOIN topics      t  ON t.id  = qs.topic_id
+     LEFT JOIN past_papers pp ON pp.id = qs.past_paper_id
+     LEFT JOIN subjects    s  ON s.id  = COALESCE(t.subject_id, pp.subject_id)
+     LEFT JOIN exam_bodies eb ON eb.id = s.exam_body_id
      WHERE qs.id = ?
      LIMIT 1');
+
 mysqli_stmt_bind_param($stmt, 'i', $question_set_id);
 mysqli_stmt_execute($stmt);
 $res = mysqli_stmt_get_result($stmt);
@@ -55,8 +84,7 @@ mysqli_stmt_close($stmt);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Set #<?= $question_set_id ?> — <?= htmlspecialchars($set['topic_name']) ?></title>
-    <?php include 'inc/links.php'; ?>
+    <title>Set #<?= $question_set_id ?> — <?= $set['source'] === 'past_paper' ? htmlspecialchars($set['subject_name'] . ' ' . $set['past_paper_year']) : htmlspecialchars($set['topic_name']) ?></title>    <?php include 'inc/links.php'; ?>
 </head>
 <body>
 <?php include 'inc/header.php'; ?>
@@ -68,12 +96,19 @@ mysqli_stmt_close($stmt);
             <div class="qs-breadcrumb">
                 <?= htmlspecialchars($set['exam_body_name']) ?>
                 &rsaquo; <?= htmlspecialchars($set['subject_name']) ?>
-                &rsaquo; <a href="question-set-list.php?topic_id=<?= $set['topic_id'] ?>">
-                    <?= htmlspecialchars($set['topic_name']) ?>
-                </a>
+                <?php if ($set['source'] === 'past_paper'): ?>
+                    &rsaquo; <?= (int)$set['past_paper_year'] ?>
+                <?php else: ?>
+                    &rsaquo; <?= htmlspecialchars($set['topic_name']) ?>
+                <?php endif; ?>
                 &rsaquo; Set #<?= $question_set_id ?>
             </div>
-            <div class="qs-list-title">Question set details</div>
+            <div class="d-flex align-items-center gap-2 mt-1">
+                <?php if ($back_url !== ''): ?>
+                    <a href="<?= htmlspecialchars($back_url) ?>" class="btn-qs-sm">&larr; Back</a>
+                <?php endif; ?>
+                <div class="qs-list-title">Question set details</div>
+            </div>
         </div>
 
         <div class="mcqd-actions">

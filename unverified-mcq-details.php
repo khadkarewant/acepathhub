@@ -212,7 +212,8 @@ if (!empty($sets)) {
             </div>
 
             <div class="qs-card-footer">
-                <a href="mcq-details.php?question_set_id=<?= $set['id'] ?>" class="btn-qs-sm">
+                
+                <a href="mcq-details.php?question_set_id=<?= $set['id'] ?>&ref=unverified<?= $past_paper ? '&past_paper_id=' . $past_paper_id : '&topic_id=' . $topic_id ?>" class="btn-qs-sm">
                     Details
                 </a>
                 <?php if (has_role(ROLE_ADMIN)): ?>
