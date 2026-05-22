@@ -9,6 +9,10 @@ $selected_eb_id = isset($_GET['exam_body_id']) && ctype_digit($_GET['exam_body_i
     ? (int)$_GET['exam_body_id']
     : 0;
 
+$active_tab = in_array($_GET['tab'] ?? '', ['practice', 'past_paper'])
+    ? $_GET['tab']
+    : 'practice';
+
 // 1. All exam bodies for dropdown
 $res         = mysqli_query($conn, 'SELECT id, name FROM exam_bodies ORDER BY id ASC');
 $exam_bodies = mysqli_fetch_all($res, MYSQLI_ASSOC);
@@ -18,23 +22,48 @@ if ($selected_eb_id === 0 && !empty($exam_bodies)) {
     $selected_eb_id = (int)$exam_bodies[0]['id'];
 }
 
-// 2. Topics with verified+draft sets — single query, no N+1
-$stmt = mysqli_prepare($conn,
-    'SELECT t.id AS topic_id, t.name AS topic_name,
-            COUNT(qs.id) AS draft_count
-     FROM topics t
-     JOIN subjects s       ON s.id  = t.subject_id
-     JOIN exam_bodies eb   ON eb.id = s.exam_body_id
-     JOIN question_sets qs ON qs.topic_id = t.id
-     WHERE eb.id = ? AND qs.verified = 1 AND qs.status = \'draft\'
-     GROUP BY t.id
-     ORDER BY t.id ASC');
-mysqli_stmt_bind_param($stmt, 'i', $selected_eb_id);
-mysqli_stmt_execute($stmt);
-$res    = mysqli_stmt_get_result($stmt);
-$topics = mysqli_fetch_all($res, MYSQLI_ASSOC);
-mysqli_free_result($res);
-mysqli_stmt_close($stmt);
+// 2. Topics with verified+draft sets
+$topics = [];
+if ($active_tab === 'practice') {
+    $stmt = mysqli_prepare($conn,
+        'SELECT t.id AS topic_id, t.name AS topic_name,
+                COUNT(qs.id) AS draft_count
+         FROM topics t
+         JOIN subjects s       ON s.id  = t.subject_id
+         JOIN exam_bodies eb   ON eb.id = s.exam_body_id
+         JOIN question_sets qs ON qs.topic_id = t.id
+         WHERE eb.id = ? AND qs.verified = 1 AND qs.status = \'draft\'
+         GROUP BY t.id
+         ORDER BY t.id ASC');
+    mysqli_stmt_bind_param($stmt, 'i', $selected_eb_id);
+    mysqli_stmt_execute($stmt);
+    $res    = mysqli_stmt_get_result($stmt);
+    $topics = mysqli_fetch_all($res, MYSQLI_ASSOC);
+    mysqli_free_result($res);
+    mysqli_stmt_close($stmt);
+}
+
+// 3. Past papers with draft count
+$past_papers = [];
+if ($active_tab === 'past_paper') {
+    $stmt = mysqli_prepare($conn,
+        'SELECT pp.id AS past_paper_id, pp.year,
+                s.name AS subject_name,
+                COUNT(qs.id) AS draft_count
+         FROM past_papers pp
+         JOIN subjects s       ON s.id  = pp.subject_id
+         JOIN exam_bodies eb   ON eb.id = s.exam_body_id
+         JOIN question_sets qs ON qs.past_paper_id = pp.id
+         WHERE eb.id = ? AND qs.verified = 1 AND qs.status = \'draft\'
+         GROUP BY pp.id
+         ORDER BY s.name ASC, pp.year DESC');
+    mysqli_stmt_bind_param($stmt, 'i', $selected_eb_id);
+    mysqli_stmt_execute($stmt);
+    $res         = mysqli_stmt_get_result($stmt);
+    $past_papers = mysqli_fetch_all($res, MYSQLI_ASSOC);
+    mysqli_free_result($res);
+    mysqli_stmt_close($stmt);
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -54,6 +83,7 @@ mysqli_stmt_close($stmt);
     </div>
 
     <form method="GET" id="ebForm">
+        <input type="hidden" name="tab" value="<?= htmlspecialchars($active_tab) ?>">
         <select name="exam_body_id" class="form-select qs-eb-select"
                 onchange="document.getElementById('ebForm').submit()">
             <?php foreach ($exam_bodies as $eb): ?>
@@ -65,16 +95,47 @@ mysqli_stmt_close($stmt);
         </select>
     </form>
 
-    <?php if (empty($topics)): ?>
-        <div class="qs-empty">No draft question sets for this exam body.</div>
+    <div class="qs-tabs">
+        <a href="?exam_body_id=<?= $selected_eb_id ?>&tab=practice"
+           class="qs-tab <?= $active_tab === 'practice' ? 'qs-tab-active' : '' ?>">
+            Practice Questions
+        </a>
+        <a href="?exam_body_id=<?= $selected_eb_id ?>&tab=past_paper"
+           class="qs-tab <?= $active_tab === 'past_paper' ? 'qs-tab-active' : '' ?>">
+            Past Papers
+        </a>
+    </div>
+
+    <?php if ($active_tab === 'practice'): ?>
+
+        <?php if (empty($topics)): ?>
+            <div class="qs-empty">No draft question sets for this exam body.</div>
+        <?php else: ?>
+            <?php foreach ($topics as $t): ?>
+            <div class="uv-topic-row"
+                 onclick="window.location.href='draft-mcq-details.php?topic_id=<?= $t['topic_id'] ?>'">
+                <span class="uv-topic-name"><?= htmlspecialchars($t['topic_name']) ?></span>
+                <span class="uv-topic-count"><?= $t['draft_count'] ?> draft<?= $t['draft_count'] !== 1 ? 's' : '' ?></span>
+            </div>
+            <?php endforeach; ?>
+        <?php endif; ?>
+
     <?php else: ?>
-        <?php foreach ($topics as $t): ?>
-        <div class="uv-topic-row"
-             onclick="window.location.href='draft-mcq-details.php?topic_id=<?= $t['topic_id'] ?>'">
-            <span class="uv-topic-name"><?= htmlspecialchars($t['topic_name']) ?></span>
-            <span class="uv-topic-count"><?= $t['draft_count'] ?> draft<?= $t['draft_count'] !== 1 ? 's' : '' ?></span>
-        </div>
-        <?php endforeach; ?>
+
+        <?php if (empty($past_papers)): ?>
+            <div class="qs-empty">No draft past paper question sets for this exam body.</div>
+        <?php else: ?>
+            <?php foreach ($past_papers as $pp): ?>
+            <div class="uv-topic-row"
+                 onclick="window.location.href='draft-mcq-details.php?past_paper_id=<?= $pp['past_paper_id'] ?>'">
+                <span class="uv-topic-name">
+                    <?= htmlspecialchars($pp['subject_name']) ?> — <?= (int)$pp['year'] ?>
+                </span>
+                <span class="uv-topic-count"><?= $pp['draft_count'] ?> draft<?= $pp['draft_count'] !== 1 ? 's' : '' ?></span>
+            </div>
+            <?php endforeach; ?>
+        <?php endif; ?>
+
     <?php endif; ?>
 
 </div>
