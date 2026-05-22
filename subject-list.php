@@ -106,9 +106,9 @@ mysqli_stmt_close($stmt);
                                 <input type="hidden" name="id" value="<?= (int)$row['id'] ?>">
                                 <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
                             </form>
+                            <?php endif; ?>
                             <a href="past-paper-list.php?subject_id=<?= (int)$row['id'] ?>"
                             class="btn btn-sm btn-outline-info ms-1">Past Papers</a>
-                            <?php endif; ?>
                         </td>
                     </tr>
                 <?php endforeach;
