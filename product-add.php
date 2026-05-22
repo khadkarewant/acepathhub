@@ -15,8 +15,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['submit'] ?? '') === 'add_p
     $product_type = trim((string)($_POST['product_type'] ?? 'mock'));
     $duration_minutes      = isset($_POST['duration_minutes']) ? (int)$_POST['duration_minutes'] : 0;
     $total_questions       = isset($_POST['total_questions']) ? (int)$_POST['total_questions'] : 0;
-    $mark_per_question     = isset($_POST['mark_per_question']) ? (float)$_POST['mark_per_question'] : 0.0;
-    $negative_mark_percent = isset($_POST['negative_mark_percent']) ? (float)$_POST['negative_mark_percent'] : 0.0;
+    $total_marks = isset($_POST['total_marks']) ? (int)$_POST['total_marks'] : 100;
     $allowed_types = ['mock', 'practice', 'past_paper'];
     if (!in_array($product_type, $allowed_types, true)) $product_type = 'mock';
     $description  = trim((string)($_POST['description'] ?? ''));
@@ -30,10 +29,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['submit'] ?? '') === 'add_p
         $err = 'Duration must be greater than 0.';
     } elseif ($total_questions <= 0) {
         $err = 'Total questions must be greater than 0.';
-    } elseif ($mark_per_question <= 0) {
-        $err = 'Mark per question must be greater than 0.';
-    } elseif ($negative_mark_percent < 0 || $negative_mark_percent > 100) {
-        $err = 'Negative mark percent must be between 0 and 100.';
+    } elseif ($total_marks <= 0) {
+        $err = 'Total marks must be greater than 0.';
     } elseif ($product_type === "mock" && $sets <= 0) {
         $err = 'Sets must be greater than 0 for mock exam.';
     } elseif ($price < 0) {
@@ -44,19 +41,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['submit'] ?? '') === 'add_p
             // Insert product
             $stmt = $conn->prepare("
                 INSERT INTO products
-                    (name, product_type, description, duration_minutes, total_questions,
-                    mark_per_question, negative_mark_percent, sets, price, status)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')
+                    (name, product_type, description, duration_minutes, total_questions, total_marks, sets, price, status)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active')
             ");
             $stmt->bind_param(
-                "sssiiiddi",
+                "sssiiiid",
                 $name,
                 $product_type,
                 $description,
                 $duration_minutes,
                 $total_questions,
-                $mark_per_question,
-                $negative_mark_percent,
+                $total_marks,
                 $sets,
                 $price
             );
@@ -152,19 +147,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['submit'] ?? '') === 'add_p
                 </div>
 
                 <div class="mb-3">
-                    <label class="form-label">Mark Per Question</label>
-                    <input type="number" name="mark_per_question" class="form-control"
-                           min="0.01" step="0.01" required
-                           value="<?= htmlspecialchars($_POST['mark_per_question'] ?? '1.00', ENT_QUOTES, 'UTF-8') ?>">
+                    <label class="form-label">Total Marks</label>
+                    <input type="number" name="total_marks" class="form-control" min="1" required
+                        value="<?= (int)($_POST['total_marks'] ?? 100) ?>">
                 </div>
-
-                <div class="mb-3">
-                    <label class="form-label">Negative Mark %</label>
-                    <input type="number" name="negative_mark_percent" class="form-control"
-                           min="0" max="100" step="0.01"
-                           value="<?= htmlspecialchars($_POST['negative_mark_percent'] ?? '0.00', ENT_QUOTES, 'UTF-8') ?>">
-                </div>
-
+                
                 <div class="mb-3">
                     <label class="form-label">Price (₦)</label>
                     <input type="number" name="price" class="form-control" min="0" step="0.01" required
