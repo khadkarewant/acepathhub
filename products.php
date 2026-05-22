@@ -4,7 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . "/src/db/db_conn.php";
 require_once __DIR__ . "/src/db/session.php";
 
-require_role([ROLE_ADMIN, ROLE_STUDENT]);
+require_role(ROLE_ADMIN, ROLE_STUDENT);
 
 if (has_role(ROLE_ADMIN)) {
     $stmt = $conn->prepare("
