@@ -28,12 +28,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['submit'] ?? '') === 'add_p
     csrf_verify();
 
     $name                  = trim((string)($_POST['name'] ?? ''));
-    $is_practice           = isset($_POST['is_practice']) ? (int)$_POST['is_practice'] : 0;
+    $product_type = trim((string)($_POST['product_type'] ?? 'mock'));
     $duration_minutes      = isset($_POST['duration_minutes']) ? (int)$_POST['duration_minutes'] : 0;
     $total_questions       = isset($_POST['total_questions']) ? (int)$_POST['total_questions'] : 0;
     $mark_per_question     = isset($_POST['mark_per_question']) ? (float)$_POST['mark_per_question'] : 0.0;
     $negative_mark_percent = isset($_POST['negative_mark_percent']) ? (float)$_POST['negative_mark_percent'] : 0.0;
-    $sets                  = ($is_practice === 0) ? (int)($_POST['sets'] ?? 0) : 1;
+    $allowed_types = ['mock', 'practice', 'past_paper'];
+    if (!in_array($product_type, $allowed_types, true)) $product_type = 'mock';
+    $description  = trim((string)($_POST['description'] ?? ''));
+    $sets         = ($product_type === 'mock') ? (int)($_POST['sets'] ?? 0) : 1;
     $price                 = isset($_POST['price']) ? (float)$_POST['price'] : 0.0;
     $subject_ids           = isset($_POST['subject_ids']) && is_array($_POST['subject_ids'])
                                 ? array_map('intval', $_POST['subject_ids'])
@@ -50,7 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['submit'] ?? '') === 'add_p
         $err = 'Mark per question must be greater than 0.';
     } elseif ($negative_mark_percent < 0 || $negative_mark_percent > 100) {
         $err = 'Negative mark percent must be between 0 and 100.';
-    } elseif ($is_practice === 0 && $sets <= 0) {
+    } elseif ($product_type === "mock" && $sets <= 0) {
         $err = 'Sets must be greater than 0 for mock exam.';
     } elseif ($price < 0) {
         $err = 'Price cannot be negative.';
@@ -62,14 +65,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['submit'] ?? '') === 'add_p
             // Insert product
             $stmt = $conn->prepare("
                 INSERT INTO products
-                    (name, is_practice, duration_minutes, total_questions,
-                     mark_per_question, negative_mark_percent, sets, price, status)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active')
+                    (name, product_type, description, duration_minutes, total_questions,
+                    mark_per_question, negative_mark_percent, sets, price, status)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')
             ");
             $stmt->bind_param(
-                "siiddidi",
+                "sssiiiddi",
                 $name,
-                $is_practice,
+                $product_type,
+                $description,
                 $duration_minutes,
                 $total_questions,
                 $mark_per_question,
@@ -134,22 +138,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['submit'] ?? '') === 'add_p
                 </div>
 
                 <div class="mb-3">
+                    <label class="form-label">Description <small class="text-muted">(optional)</small></label>
+                    <input type="text" name="description" class="form-control" maxlength="255"
+                        value="<?= htmlspecialchars($_POST['description'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+                </div>
+
+                <div class="mb-3">
                     <label class="form-label">Type</label><br>
                     <div class="form-check form-check-inline">
-                        <input class="form-check-input" type="radio" name="is_practice" value="0" id="type_mock"
-                               <?= (($_POST['is_practice'] ?? '0') === '0') ? 'checked' : '' ?>
-                               onchange="document.getElementById('sets_row').classList.remove('d-none')">
+                        <input class="form-check-input" type="radio" name="product_type" value="mock" id="type_mock"
+                            <?= (($_POST['product_type'] ?? 'mock') === 'mock') ? 'checked' : '' ?>
+                            onchange="document.getElementById('sets_row').classList.remove('d-none')">
                         <label class="form-check-label" for="type_mock">Mock Exam</label>
                     </div>
                     <div class="form-check form-check-inline">
-                        <input class="form-check-input" type="radio" name="is_practice" value="1" id="type_practice"
-                               <?= (($_POST['is_practice'] ?? '0') === '1') ? 'checked' : '' ?>
-                               onchange="document.getElementById('sets_row').classList.add('d-none')">
+                        <input class="form-check-input" type="radio" name="product_type" value="practice" id="type_practice"
+                            <?= (($_POST['product_type'] ?? '') === 'practice') ? 'checked' : '' ?>
+                            onchange="document.getElementById('sets_row').classList.add('d-none')">
                         <label class="form-check-label" for="type_practice">Practice</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="product_type" value="past_paper" id="type_past_paper"
+                            <?= (($_POST['product_type'] ?? '') === 'past_paper') ? 'checked' : '' ?>
+                            onchange="document.getElementById('sets_row').classList.add('d-none')">
+                        <label class="form-check-label" for="type_past_paper">Past Paper</label>
                     </div>
                 </div>
 
-                <div class="mb-3" id="sets_row" <?= (($_POST['is_practice'] ?? '0') === '1') ? 'class="d-none"' : '' ?>>
+                <div class="mb-3" id="sets_row" <?= in_array(($_POST['product_type'] ?? 'mock'), ['practice', 'past_paper']) ? 'class="d-none"' : '' ?>>
                     <label class="form-label">Sets</label>
                     <input type="number" name="sets" class="form-control" min="1"
                            value="<?= (int)($_POST['sets'] ?? 1) ?>">
