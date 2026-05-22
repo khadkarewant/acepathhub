@@ -6,6 +6,11 @@ require_once __DIR__ . "/src/db/session.php";
 
 require_role(ROLE_ADMIN);
 
+$stmt = $conn->prepare("SELECT id, name FROM exam_bodies ORDER BY name ASC");
+$stmt->execute();
+$exam_bodies = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+$stmt->close();
+
 $err = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['submit'] ?? '') === 'add_product') {
@@ -21,6 +26,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['submit'] ?? '') === 'add_p
     $description  = trim((string)($_POST['description'] ?? ''));
     $sets         = ($product_type === 'mock') ? (int)($_POST['sets'] ?? 0) : 1;
     $price                 = isset($_POST['price']) ? (float)$_POST['price'] : 0.0;
+    $exam_body_id = isset($_POST['exam_body_id']) ? (int)$_POST['exam_body_id'] : 0;
 
     // Validate
     if ($name === '' || mb_strlen($name, 'UTF-8') > 120) {
@@ -35,19 +41,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['submit'] ?? '') === 'add_p
         $err = 'Sets must be greater than 0 for mock exam.';
     } elseif ($price < 0) {
         $err = 'Price cannot be negative.';
+    } elseif ($exam_body_id <= 0) {
+        $err = 'Exam body is required.';
     } else {
         $conn->begin_transaction();
         try {
             // Insert product
             $stmt = $conn->prepare("
                 INSERT INTO products
-                    (name, product_type, description, duration_minutes, total_questions, total_marks, sets, price, status)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active')
+                    (name, product_type, exam_body_id, description, duration_minutes, total_questions, total_marks, sets, price, status)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')
             ");
             $stmt->bind_param(
-                "sssiiiid",
+                "ssisiiiid",
                 $name,
                 $product_type,
+                $exam_body_id,
                 $description,
                 $duration_minutes,
                 $total_questions,
@@ -104,6 +113,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['submit'] ?? '') === 'add_p
                     <label class="form-label">Description <small class="text-muted">(optional)</small></label>
                     <input type="text" name="description" class="form-control" maxlength="255"
                         value="<?= htmlspecialchars($_POST['description'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Exam Body</label>
+                    <select name="exam_body_id" class="form-control" required>
+                        <option value="" disabled selected>Select Exam Body</option>
+                        <?php foreach ($exam_bodies as $eb): ?>
+                            <option value="<?= $eb['id'] ?>"
+                                <?= (isset($_POST['exam_body_id']) && (int)$_POST['exam_body_id'] === $eb['id']) ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($eb['name'], ENT_QUOTES, 'UTF-8') ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
                 </div>
 
                 <div class="mb-3">

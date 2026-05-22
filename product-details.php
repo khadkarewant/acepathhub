@@ -13,8 +13,7 @@ if ($product_id <= 0) {
 
 // Fetch product
 $stmt = $conn->prepare("
-    SELECT id, name, is_practice, duration_minutes, total_questions,
-           mark_per_question, negative_mark_percent, sets, price, status
+    SELECT id, name, product_type, exam_body_id, description, duration_minutes, total_questions,total_marks, sets, price, status
     FROM products
     WHERE id = ?
     LIMIT 1
@@ -33,43 +32,30 @@ if (has_role(ROLE_STUDENT) && $product['status'] !== 'active') {
     header("Location: products.php"); exit;
 }
 
-$is_practice = (int)$product['is_practice'];
+$product_type = $product['product_type'];
 
 // Fetch subjects linked to this product
 $stmt = $conn->prepare("
-    SELECT s.id, s.name
-    FROM product_subjects ps
-    JOIN subjects s ON s.id = ps.subject_id
-    WHERE ps.product_id = ?
-    ORDER BY s.name ASC
+    SELECT t.id, t.name, t.subject_id, s.name AS subject_name
+    FROM topics t
+    JOIN subjects s ON s.id = t.subject_id
+    WHERE s.exam_body_id = ?
+    ORDER BY s.name ASC, t.name ASC
 ");
-$stmt->bind_param("i", $product_id);
+$stmt->bind_param("i", $product['exam_body_id']);
 $stmt->execute();
-$subjects = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+$all_topics = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 $stmt->close();
 
-$subject_ids = array_column($subjects, 'id');
-
-// Fetch all topics under these subjects (for group assignment)
+$subjects = [];
 $topics_by_subject = [];
-if (!empty($subject_ids)) {
-    $placeholders = implode(',', array_fill(0, count($subject_ids), '?'));
-    $types        = str_repeat('i', count($subject_ids));
-    $stmt = $conn->prepare("
-        SELECT t.id, t.name, t.subject_id
-        FROM topics t
-        WHERE t.subject_id IN ($placeholders)
-        ORDER BY t.subject_id ASC, t.name ASC
-    ");
-    $stmt->bind_param($types, ...$subject_ids);
-    $stmt->execute();
-    $all_topics = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-    $stmt->close();
-
-    foreach ($all_topics as $t) {
-        $topics_by_subject[$t['subject_id']][] = $t;
+foreach ($all_topics as $t) {
+    $topics_by_subject[$t['subject_id']][] = $t;
+    if (!isset($subjects[$t['subject_id']])) {
+        $subjects[$t['subject_id']] = ['id' => $t['subject_id'], 'name' => $t['subject_name']];
     }
 }
+$subjects = array_values($subjects);
 
 $msg = '';
 
@@ -199,7 +185,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && has_role(ROLE_ADMIN)) {
 
 // Fetch groups AFTER post handling (so page reflects latest state)
 $groups = [];
-if ($is_practice === 0) {
+if ($product_type === "mock") {
     $stmt = $conn->prepare("
         SELECT id, name, question_count
         FROM exam_groups
@@ -277,12 +263,12 @@ $ok = isset($_GET['ok']);
         <table class="table">
             <tbody>
                 <tr><th>Name</th><td><?= htmlspecialchars($product['name'], ENT_QUOTES, 'UTF-8') ?></td></tr>
-                <tr><th>Type</th><td><?= $is_practice ? 'Practice' : 'Mock Exam' ?></td></tr>
+                <tr><th>Type</th><td><?= ucfirst(str_replace('_', ' ', $product_type)) ?></td></tr>
                 <tr><th>Duration</th><td><?= $product['duration_minutes'] ?> minutes</td></tr>
                 <tr><th>Total Questions</th><td><?= $product['total_questions'] ?></td></tr>
-                <tr><th>Mark Per Question</th><td><?= $product['mark_per_question'] ?></td></tr>
-                <tr><th>Negative Mark</th><td><?= $product['negative_mark_percent'] ?>%</td></tr>
-                <?php if (!$is_practice): ?>
+                <tr><th>Description</th><td><?= htmlspecialchars($product['description'] ?? '—', ENT_QUOTES, 'UTF-8') ?></td></tr>
+                <tr><th>Total Marks</th><td><?= $product['total_marks'] ?></td></tr>
+                <?php if ($product_type !== 'practice'): ?>
                 <tr><th>Sets</th><td><?= $product['sets'] ?></td></tr>
                 <?php endif; ?>
                 <tr><th>Price</th><td>₦<?= number_format((float)$product['price'], 2) ?></td></tr>
@@ -339,7 +325,7 @@ $ok = isset($_GET['ok']);
     <!-- Groups Management (Admin only) -->
     <?php if (has_role(ROLE_ADMIN)): ?>
         <hr>
-        <h6><?= $is_practice ? 'Practice Groups' : 'Exam Groups' ?></h6>
+        <h6><?= $product_type === 'practice' ? 'Practice Groups' : 'Exam Groups' ?></h6>
 
         <!-- Add Group Form -->
         <form method="POST" class="mb-4">
@@ -349,7 +335,7 @@ $ok = isset($_GET['ok']);
                     <label class="form-label small">Group Name</label>
                     <input type="text" name="group_name" class="form-control form-control-sm" required>
                 </div>
-                <?php if (!$is_practice): ?>
+                <?php if ($product_type !== 'practice'): ?>
                 <div class="col-md-3">
                     <label class="form-label small">Question Count</label>
                     <input type="number" name="question_count" min="1" class="form-control form-control-sm" required>
@@ -383,7 +369,7 @@ $ok = isset($_GET['ok']);
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <span style="color:var(--accent);">
                         <?= htmlspecialchars($g['name'], ENT_QUOTES, 'UTF-8') ?>
-                        <?php if (!$is_practice): ?>
+                        <?php if ($product_type !== 'practice'): ?>
                             <small class="text-muted">(<?= $g['question_count'] ?> questions)</small>
                         <?php else: ?>
                             <small class="text-muted">(sort: <?= $g['sort_order'] ?>)</small>
@@ -427,7 +413,7 @@ $ok = isset($_GET['ok']);
                             <?php endforeach; ?>
                         </select>
                         <button type="submit"
-                                name="<?= $is_practice ? 'save_practice_group_topics' : 'save_exam_group_topics' ?>"
+                                name="<?= $product_type === 'practice' ? 'save_practice_group_topics' : 'save_exam_group_topics' ?>"
                                 class="btn btn-sm btn-success">Save Topics</button>
                     </form>
                 </div>
