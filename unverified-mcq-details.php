@@ -201,7 +201,7 @@ if (!empty($sets)) {
                             </div>
                             <?php if ($more > 0): ?>
                                 <div class="qs-more-hint">
-                                    + <?= $more ?> more question<?= $more > 1 ? 's' : '' ?> &mdash; view details
+                                    + <?= $more ?> more question<?= $more > 1 ? 's' : '' ?> in this set.
                                 </div>
                             <?php endif; ?>
                         </div>
