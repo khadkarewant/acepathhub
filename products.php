@@ -8,28 +8,29 @@ require_role(ROLE_ADMIN, ROLE_STUDENT);
 
 if (has_role(ROLE_ADMIN)) {
     $stmt = $conn->prepare("
-        SELECT id, name, is_practice, duration_minutes, total_questions,
+        SELECT id, name, product_type, duration_minutes, total_questions,
                sets, price, status
         FROM products
-        ORDER BY is_practice ASC, name ASC
+        ORDER BY product_type ASC, name ASC
     ");
     $stmt->execute();
     $products = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     $stmt->close();
 } else {
     $stmt = $conn->prepare("
-        SELECT id, name, is_practice, duration_minutes, total_questions,
+        SELECT id, name, product_type, duration_minutes, total_questions,
                sets, price
         FROM products
         WHERE status = 'active'
-        ORDER BY is_practice ASC, name ASC
+        ORDER BY product_type ASC, name ASC
     ");
     $stmt->execute();
     $products = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     $stmt->close();
 
-    $mock_products     = array_filter($products, fn($p) => $p['is_practice'] == 0);
-    $practice_products = array_filter($products, fn($p) => $p['is_practice'] == 1);
+    $mock_products      = array_filter($products, fn($p) => $p['product_type'] === 'mock');
+    $practice_products  = array_filter($products, fn($p) => $p['product_type'] === 'practice');
+    $past_paper_products = array_filter($products, fn($p) => $p['product_type'] === 'past_paper');
 }
 ?>
 <!DOCTYPE html>
@@ -72,10 +73,10 @@ if (has_role(ROLE_ADMIN)) {
                 <tr>
                     <td><?= $p['id'] ?></td>
                     <td><?= htmlspecialchars($p['name'], ENT_QUOTES, 'UTF-8') ?></td>
-                    <td><?= $p['is_practice'] ? 'Practice' : 'Mock Exam' ?></td>
+                    <td><?= ucfirst(str_replace('_', ' ', $p['product_type'])) ?></td>
                     <td><?= $p['duration_minutes'] ?> min</td>
                     <td><?= $p['total_questions'] ?></td>
-                    <td><?= $p['is_practice'] ? '—' : $p['sets'] ?></td>
+                    <td><?= $p['product_type'] === 'mock' ? $p['sets'] : '—' ?></td>
                     <td>₦<?= number_format((float)$p['price'], 2) ?></td>
                     <td>
                         <span class="badge <?= $p['status'] === 'active' ? 'bg-success' : 'bg-secondary' ?>">
@@ -147,6 +148,36 @@ if (has_role(ROLE_ADMIN)) {
                            target="_blank"
                            class="btn btn-sm"
                            style="background:var(--accent);color:#000;">Purchase</a>
+                    </div>
+                </div>
+            </div>
+        <?php endforeach; ?>
+        </div>
+    <?php endif; ?>
+
+    <?php if (!empty($past_paper_products)): ?>
+        <h5 class="mb-3" style="color:var(--accent);">Past Papers</h5>
+        <div class="row">
+        <?php foreach ($past_paper_products as $p): ?>
+            <div class="col-md-4 col-sm-6 mb-3">
+                <div class="card h-100" style="background:#13131a;border:1px solid #2a2a3a;">
+                    <div class="card-body">
+                        <h6 class="card-title" style="color:var(--accent);">
+                            <?= htmlspecialchars($p['name'], ENT_QUOTES, 'UTF-8') ?>
+                        </h6>
+                        <p class="mb-1 small text-muted">
+                            <?= $p['duration_minutes'] ?> min &bull;
+                            <?= $p['total_questions'] ?> questions
+                        </p>
+                        <p class="mb-3" style="color:var(--accent);font-weight:600;">
+                            ₦<?= number_format((float)$p['price'], 2) ?>
+                        </p>
+                        <a href="product-details.php?product_id=<?= $p['id'] ?>"
+                        class="btn btn-sm btn-outline-secondary me-1">Details</a>
+                        <a href="https://wa.me/2348169321558?text=<?= rawurlencode('I want to purchase: ' . $p['name'] . '. My username is: ' . $username) ?>"
+                        target="_blank"
+                        class="btn btn-sm"
+                        style="background:var(--accent);color:#000;">Purchase</a>
                     </div>
                 </div>
             </div>
