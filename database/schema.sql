@@ -191,7 +191,7 @@ CREATE TABLE IF NOT EXISTS `past_papers` (
 -- ----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `question_sets` (
   `id`            INT UNSIGNED                  NOT NULL AUTO_INCREMENT,
-  `topic_id`      INT UNSIGNED                  NOT NULL,
+  `topic_id`      INT UNSIGNED                  DEFAULT NULL,
   `image_path`    VARCHAR(255)                  DEFAULT NULL,
   `passage_text`  TEXT                          DEFAULT NULL,
   `source`        ENUM('practice','past_paper') NOT NULL DEFAULT 'practice',
@@ -253,19 +253,25 @@ CREATE TABLE IF NOT EXISTS `questions` (
 -- Convention enforced in application, not DB.
 -- ----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `products` (
-  `id`                    INT UNSIGNED              NOT NULL AUTO_INCREMENT,
-  `name`                  VARCHAR(120)              NOT NULL,
-  `is_practice`           TINYINT(1)                NOT NULL DEFAULT 0,
-  `duration_minutes`      SMALLINT UNSIGNED         NOT NULL DEFAULT 60,
-  `total_questions`       SMALLINT UNSIGNED         NOT NULL DEFAULT 50,
-  `mark_per_question`     DECIMAL(4,2)              NOT NULL DEFAULT 1.00,
-  `negative_mark_percent` DECIMAL(5,2)              NOT NULL DEFAULT 0.00,
-  `sets`                  TINYINT UNSIGNED          NOT NULL DEFAULT 1,
-  `price`                 DECIMAL(10,2)             NOT NULL DEFAULT 0.00,
-  `status`                ENUM('active','inactive') NOT NULL DEFAULT 'active',
- 
-  PRIMARY KEY (`id`)
- 
+  `id`              INT UNSIGNED                         NOT NULL AUTO_INCREMENT,
+  `name`            VARCHAR(120)                         NOT NULL,
+  `product_type`    ENUM('mock','practice','past_paper') NOT NULL DEFAULT 'mock',
+  `exam_body_id`    INT UNSIGNED                         DEFAULT NULL,
+  `description`     VARCHAR(255)                         DEFAULT NULL,
+  `duration_minutes` SMALLINT UNSIGNED                   NOT NULL DEFAULT 60,
+  `total_questions` SMALLINT UNSIGNED                    NOT NULL DEFAULT 50,
+  `total_marks`     SMALLINT UNSIGNED                    NOT NULL DEFAULT 100,
+  `sets`            TINYINT UNSIGNED                     NOT NULL DEFAULT 1,
+  `price`           DECIMAL(10,2)                        NOT NULL DEFAULT 0.00,
+  `status`          ENUM('active','inactive')            NOT NULL DEFAULT 'active',
+
+  PRIMARY KEY (`id`),
+  INDEX `idx_products_exam_body` (`exam_body_id`),
+
+  CONSTRAINT `fk_products_exam_body`
+    FOREIGN KEY (`exam_body_id`) REFERENCES `exam_bodies` (`id`)
+    ON DELETE RESTRICT ON UPDATE CASCADE
+
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
  
 -- ----------------------------------------------------------------------------
@@ -467,6 +473,29 @@ CREATE TABLE IF NOT EXISTS `practice_answers` (
 -- ============================================================================
 -- DAY 5 — add tables here
 -- ============================================================================
+CREATE TABLE IF NOT EXISTS `purchased_products` (
+  `id`             INT UNSIGNED     NOT NULL AUTO_INCREMENT,
+  `user_id`        INT(11)          NOT NULL,
+  `product_id`     INT UNSIGNED     NOT NULL,
+  `amount`         DECIMAL(10,2)    NOT NULL DEFAULT 0.00,
+  `sets_remaining` TINYINT UNSIGNED NOT NULL DEFAULT 0,
+  `expires_at`     DATE             DEFAULT NULL,
+  `txn_no`         VARCHAR(64)      DEFAULT NULL,
+  `txn_mode`       ENUM('esewa','khalti','bank','free') NOT NULL DEFAULT 'free',
+  `mobile`         VARCHAR(15)      DEFAULT NULL,
+  `status`         ENUM('active','cancelled') NOT NULL DEFAULT 'active',
+  `purchased_on`   DATE             NOT NULL,
+  `created_by`     INT(11)          NOT NULL,
+  PRIMARY KEY (`id`),
+  INDEX `idx_pp_user`    (`user_id`),
+  INDEX `idx_pp_product` (`product_id`),
+  CONSTRAINT `fk_pp_user`
+    FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`)
+    ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT `fk_pp_product`
+    FOREIGN KEY (`product_id`) REFERENCES `products` (`id`)
+    ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================================
 -- DAY 6 — add tables here
