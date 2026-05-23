@@ -301,7 +301,7 @@ $ok = isset($_GET['ok']);
         <?php endif; ?>
 
         <?php if (has_role(ROLE_ADMIN)): ?>
-            <a href="product-update.php?product_id=<?= $product_id ?>"
+            <a href="product-edit.php?product_id=<?= $product_id ?>"
                class="btn btn-sm btn-dark me-1">Update</a>
 
             <?php if ($product['status'] === 'inactive'): ?>
