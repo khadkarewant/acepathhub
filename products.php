@@ -114,7 +114,7 @@ if (has_role(ROLE_ADMIN)) {
                         </p>
                         <a href="product-details.php?product_id=<?= $p['id'] ?>"
                            class="btn btn-sm btn-outline-secondary me-1">Details</a>
-                        <a href="https://wa.me/2348169321558?text=<?= rawurlencode('I want to purchase: ' . $p['name'] . '. My username is: ' . $username) ?>"
+                        <a href="https://wa.me/2348169321558?text=<?= rawurlencode('I want to purchase: ' . $p['name'] . '. My username is: ' . $user['username']) ?>"
                            target="_blank"
                            class="btn btn-sm"
                            style="background:var(--accent);color:#000;">Purchase</a>
@@ -144,7 +144,7 @@ if (has_role(ROLE_ADMIN)) {
                         </p>
                         <a href="product-details.php?product_id=<?= $p['id'] ?>"
                            class="btn btn-sm btn-outline-secondary me-1">Details</a>
-                        <a href="https://wa.me/2348169321558?text=<?= rawurlencode('I want to purchase: ' . $p['name'] . '. My username is: ' . $username) ?>"
+                        <a href="https://wa.me/2348169321558?text=<?= rawurlencode('I want to purchase: ' . $p['name'] . '. My username is: ' . $user['username']) ?>"
                            target="_blank"
                            class="btn btn-sm"
                            style="background:var(--accent);color:#000;">Purchase</a>
@@ -174,7 +174,7 @@ if (has_role(ROLE_ADMIN)) {
                         </p>
                         <a href="product-details.php?product_id=<?= $p['id'] ?>"
                         class="btn btn-sm btn-outline-secondary me-1">Details</a>
-                        <a href="https://wa.me/2348169321558?text=<?= rawurlencode('I want to purchase: ' . $p['name'] . '. My username is: ' . $username) ?>"
+                        <a href="https://wa.me/2348169321558?text=<?= rawurlencode('I want to purchase: ' . $p['name'] . '. My username is: ' . $user['username']) ?>"
                         target="_blank"
                         class="btn btn-sm"
                         style="background:var(--accent);color:#000;">Purchase</a>
