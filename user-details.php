@@ -115,7 +115,7 @@ if (!$row) {
         <?php endif; ?>
 
         <?php if ($row['role'] === ROLE_STUDENT): ?>
-            <a href="assign-product.php?user_id=<?= $target_user_id ?>" class="btn-qs-sm">
+            <a href="product-assign.php?student_id=<?= $target_user_id ?>" class="btn-qs-sm">
                 Assign Product
             </a>
             <a href="purchase-history.php?user_id=<?= $target_user_id ?>" class="btn-qs-sm">
