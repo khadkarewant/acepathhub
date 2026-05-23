@@ -85,6 +85,7 @@ if (has_role(ROLE_ADMIN)) {
                     </td>
                     <td>
                         <a href="product-details.php?product_id=<?= $p['id'] ?>" class="btn btn-sm btn-dark">View</a>
+                        <a href="product-edit.php?product_id=<?= $p['id'] ?>" class="btn btn-sm btn-secondary">Edit</a>
                     </td>
                 </tr>
             <?php endforeach; ?>
