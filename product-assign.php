@@ -61,8 +61,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['submit'] ?? '') === 'assig
     }
 
     $product_id = isset($_POST['product_id']) ? (int)$_POST['product_id'] : 0;
-    $txn_no     = trim((string)($_POST['txn_no'] ?? ''));
     $txn_mode   = trim((string)($_POST['txn_mode'] ?? ''));
+    $txn_note = trim((string)(
+        $txn_mode === 'bank' ? ($_POST['bank_name'] ?? '') :
+    ($txn_mode === 'other' ? ($_POST['other_name'] ?? '') : '')
+    ));
+    $txn_no     = trim((string)($_POST['txn_no'] ?? ''));
     $mobile     = trim((string)($_POST['mobile'] ?? ''));
     $discount   = isset($_POST['discount']) ? (float)$_POST['discount'] : 0.0;
     $duration   = isset($_POST['duration']) ? (int)$_POST['duration'] : 0; // months, practice only
@@ -129,13 +133,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['submit'] ?? '') === 'assig
             try {
                 $stmt = $conn->prepare("
                     INSERT INTO purchased_products
-                        (user_id, product_id, amount, sets_remaining, expires_at,
+                        (user_id, product_id, amount, sets_remaining, expires_at, txn_note,
                          txn_no, txn_mode, mobile, status, purchased_on, created_by)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)
                 ");
                 $stmt->bind_param(
-                    "iidisssssi",
-                    $student_id, $product_id, $amount, $sets_remaining, $expires_at,
+                    "iidissssssi",
+                    $student_id, $product_id, $amount, $sets_remaining, $expires_at, $txn_note,
                     $txn_no_val, $txn_mode, $mobile, $today, $user_id
                 );
                 $stmt->execute();
@@ -204,7 +208,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['submit'] ?? '') === 'assig
                 <div class="mb-3">
                     <label class="form-label">Product</label>
                     <select name="product_id" class="form-control" required id="productSelect">
-                        <option value="" disabled selected>Select Product</option>
+                        <option value="" disabled selected hidden>Select Product</option>
                         <?php
                         $type_labels = ['mock' => 'Mock Exam', 'practice' => 'Practice', 'past_paper' => 'Past Paper'];
                         $current_type = '';
@@ -254,6 +258,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['submit'] ?? '') === 'assig
                     <?php endforeach; ?>
                 </div>
 
+                <div class="mb-3 d-none" id="bankNameRow">
+                    <label class="form-label">Bank Name</label>
+                    <input type="text" name="bank_name" class="form-control" maxlength="100"
+                        value="<?= htmlspecialchars($_POST['bank_name'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+                </div>
+
+                <div class="mb-3 d-none" id="otherNameRow">
+                    <label class="form-label">Other Details</label>
+                    <input type="text" name="other_name" class="form-control" maxlength="100"
+                        value="<?= htmlspecialchars($_POST['other_name'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+                </div>
+
                 <div class="mb-3" id="txnRow">
                     <label class="form-label">Transaction No.</label>
                     <input type="text" name="txn_no" class="form-control" maxlength="64"
@@ -279,12 +295,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['submit'] ?? '') === 'assig
 <script>
 function toggleTxn(mode) {
     document.getElementById('txnRow').classList.toggle('d-none', mode === 'free');
+    document.getElementById('bankNameRow').classList.toggle('d-none', mode !== 'bank');
+    document.getElementById('otherNameRow').classList.toggle('d-none', mode !== 'other');
 }
 document.getElementById('productSelect').addEventListener('change', function () {
     const opt = this.options[this.selectedIndex];
     const type = opt.dataset.type;
     document.getElementById('durationRow').classList.toggle('d-none', type !== 'practice');
 });
+toggleTxn('bank');
 </script>
 
 <?php include("inc/footer.php"); ?>
