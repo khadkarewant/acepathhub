@@ -294,7 +294,7 @@ $ok = isset($_GET['ok']);
             <a href="inc/pdf/<?= $product_id ?>.pdf"
                target="_blank"
                class="btn btn-sm btn-outline-secondary me-1">View Syllabus</a>
-            <a href="https://wa.me/2348169321558?text=<?= rawurlencode('I want to purchase: ' . $product['name'] . '. My username is: ' . $username) ?>"
+            <a href="https://wa.me/2348169321558?text=<?= rawurlencode('I want to purchase: ' . $product['name'] . '. My username is: ' . $user['username']) ?>"
                target="_blank"
                class="btn btn-sm"
                style="background:var(--accent);color:#000;">Purchase</a>
