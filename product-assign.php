@@ -19,7 +19,8 @@ $stmt = $conn->prepare("
     WHERE user_id = ? AND role = ? AND is_blocked = 0
     LIMIT 1
 ");
-$stmt->bind_param("ii", $student_id, ROLE_STUDENT);
+$role_student = ROLE_STUDENT;
+$stmt->bind_param("ii", $student_id, $role_student);
 $stmt->execute();
 $student = $stmt->get_result()->fetch_assoc();
 $stmt->close();
