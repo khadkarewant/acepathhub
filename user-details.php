@@ -118,7 +118,7 @@ if (!$row) {
             <a href="product-assign.php?student_id=<?= $target_user_id ?>" class="btn-qs-sm">
                 Assign Product
             </a>
-            <a href="purchase-history.php?user_id=<?= $target_user_id ?>" class="btn-qs-sm">
+            <a href="product-purchase-history.php?student_id=<?= $target_user_id ?>" class="btn-qs-sm">
                 Purchase History
             </a>
         <?php endif; ?>
