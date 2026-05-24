@@ -34,11 +34,13 @@ $(function () {
 
         const profile = $(e.target).closest('.profile_menu');
         if (profile.length) {
+            if ($(e.target).closest('a').length) {
+                return;
+            }
             e.preventDefault();
             profile.find('.profile_submenu').toggleClass('open');
             return;
         }
-
         if (!$(e.target).closest('.profile_menu').length) {
             $('.profile_submenu.open').removeClass('open');
         }
