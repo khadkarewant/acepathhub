@@ -160,7 +160,7 @@
                 <a href="products.php"><i class="fa-solid fa-book"></i> Products</a>
             </div>
             <div class="side-links">
-                <a href="my-products.php"><i class="fa-solid fa-star"></i> My Products</a>
+                <a href="product-mine.php"><i class="fa-solid fa-star"></i> My Products</a>
             </div>
             <div class="side-links">
                 <a href="course.php"><i class="fa-solid fa-graduation-cap"></i> Full Course</a>
