@@ -66,8 +66,18 @@ $past_paper_active = mysqli_fetch_all($r, MYSQLI_ASSOC);
 mysqli_free_result($r);
 mysqli_stmt_close($stmt);
 
-include "inc/header.php";
 ?>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Products</title>
+<?php include("inc/links.php"); ?>
+</head>
+<body>
+<?php include("inc/header.php"); ?>
 
 <div class="container py-4">
     <h4 class="mp-page-title mb-4">My Products</h4>
@@ -219,5 +229,6 @@ include "inc/header.php";
 
     <?php endif; ?>
 </div>
-
 <?php include "inc/footer.php"; ?>
+</body>
+</html>
