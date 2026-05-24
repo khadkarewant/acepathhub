@@ -41,7 +41,7 @@ $page_image       = $page_image       ?? "https://acepathhub.com/assets/img/logo
 <!-- Custom JS -->
 <script src="assets/js/app.js"></script>
 
-<?php if(isset($_SESSION['user_id'])): ?>
+<?php if(isset($_SESSION['id'])): ?>
 <script>
     setTimeout(() => { window.location.href = "logout.php"; }, 1800000);
 </script>
