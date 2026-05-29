@@ -100,6 +100,8 @@ mysqli_stmt_close($stmt);
                             <?php if (has_role(ROLE_ADMIN)): ?>
                                 <a href="question-set-list.php?topic_id=<?= (int)$row['id'] ?>"
                                 class="btn btn-sm btn-outline-warning">View MCQs</a>
+                                <a href="practice-subsets-manage.php?topic_id=<?= (int)$row['id'] ?>"
+                                class="btn btn-sm btn-outline-success ms-1">Subsets</a>
                                 <a href="topic-edit.php?id=<?= (int)$row['id'] ?>"
                                     class="btn btn-sm btn-outline-primary ms-1">Edit</a>
                                     <form method="POST" action="topic-delete.php" class="d-inline ms-1"
