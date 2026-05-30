@@ -1,558 +1,537 @@
 <?php
-require_once("src/db/db_conn.php");
-require_once("src/db/session.php");
-require_once("src/db/privileges.php");
+require_once "src/db/db_conn.php";
+require_once "src/db/session.php";
 
-csrf_verify();
+require_role(ROLE_STUDENT);
 
-$user_id  = $_SESSION['id'];
-$group_id = isset($_GET['group_id']) ? intval($_GET['group_id']) : 0;
-$topic_id = isset($_GET['topic_id']) ? intval($_GET['topic_id']) : 0;
-$subset   = isset($_GET['subset']) ? intval($_GET['subset']) : 1;
-$product_id = isset($_GET['product_id']) ? intval($_GET['product_id']) : 0;
+// ── AJAX SAVE ANSWER ──────────────────────────────────────────────────────
+if (isset($_POST['ajax']) && $_POST['ajax'] === '1') {
+    header('Content-Type: application/json');
+    csrf_verify();
 
+    $purchased_id    = isset($_POST['purchased_id'])    && ctype_digit($_POST['purchased_id'])    ? (int)$_POST['purchased_id']    : 0;
+    $question_set_id = isset($_POST['question_set_id']) && ctype_digit($_POST['question_set_id']) ? (int)$_POST['question_set_id'] : 0;
+    $question_id     = isset($_POST['question_id'])     && ctype_digit($_POST['question_id'])     ? (int)$_POST['question_id']     : 0;
+    $selected        = strtoupper(trim($_POST['selected'] ?? ''));
 
-// Fix: if group_id is missing in URL
-if($group_id == 0 && $topic_id > 0){
-    $stmt_grp = mysqli_prepare($conn, "SELECT group_id FROM product_topics WHERE topic_id = ? LIMIT 1");
-    mysqli_stmt_bind_param($stmt_grp, "i", $topic_id);
-    mysqli_stmt_execute($stmt_grp);
-
-    $res = mysqli_stmt_get_result($stmt_grp);
-    mysqli_stmt_close($stmt_grp);
-    if($row = mysqli_fetch_assoc($res)){
-        $group_id = $row['group_id'];
+    if ($purchased_id === 0 || $question_set_id === 0 || $question_id === 0
+        || !in_array($selected, ['A','B','C','D'], true)) {
+        echo json_encode(['error' => 'Invalid input']);
+        exit;
     }
-}
 
-// Only validate topic/group access if not an AJAX request
-if (!isset($_POST['ajax'])) {
-    $stmt_topic = mysqli_prepare($conn,
-    "SELECT t.id, t.name, pt.group_id
-     FROM topics t
-     JOIN product_topics pt ON t.id = pt.topic_id
-     WHERE t.id = ? AND pt.group_id = ?
-     LIMIT 1"
+    // Verify ownership
+    $stmt = mysqli_prepare($conn,
+        "SELECT id FROM purchased_products WHERE id = ? AND user_id = ? LIMIT 1"
     );
-    mysqli_stmt_bind_param($stmt_topic, "ii", $topic_id, $group_id);
-    mysqli_stmt_execute($stmt_topic);
-    $topic_result = mysqli_stmt_get_result($stmt_topic);
-    mysqli_stmt_close($stmt_topic);
+    mysqli_stmt_bind_param($stmt, 'ii', $purchased_id, $user_id);
+    mysqli_stmt_execute($stmt);
+    $r    = mysqli_stmt_get_result($stmt);
+    $owns = mysqli_fetch_assoc($r);
+    mysqli_free_result($r);
+    mysqli_stmt_close($stmt);
 
-    if (!$topic = mysqli_fetch_assoc($topic_result)) {
-        header("Location: home.php");
-        exit;
-    }
-}
-
-// FETCH COURSE ID
-$course_id = 0;
-$stmt_course = mysqli_prepare($conn, "SELECT course_id FROM topics WHERE id = ? LIMIT 1");
-mysqli_stmt_bind_param($stmt_course, "i", $topic_id);
-mysqli_stmt_execute($stmt_course);
-$course_res = mysqli_stmt_get_result($stmt_course);
-mysqli_stmt_close($stmt_course);
-if($row = mysqli_fetch_assoc($course_res)){
-    $course_id = $row['course_id'];
-}
-
-// ===================== AJAX: SAVE ANSWER =====================
-// Inside AJAX save answer block:
-if(isset($_POST['ajax']) && $_POST['ajax']==='1'){
-    $mcq_id   = intval($_POST['mcq_id']);
-    $selected = strtoupper(trim($_POST['selected']));
-    $topic_id_ajax = intval($_POST['topic_id']);
-    $product_id_ajax = intval($_POST['product_id']); // pass product_id via JS
-
-    if(!in_array($selected, ['A','B','C','D'], true)){
-        echo json_encode(['error' => 'Invalid answer option.']);
+    if (!$owns) {
+        echo json_encode(['error' => 'Access denied']);
         exit;
     }
 
-    $stmt_q = mysqli_prepare($conn, "SELECT answer, explanation FROM questions WHERE mcq_id = ? LIMIT 1");
-    mysqli_stmt_bind_param($stmt_q, "i", $mcq_id);
-    mysqli_stmt_execute($stmt_q);
-    $qres = mysqli_stmt_get_result($stmt_q);
-    mysqli_stmt_close($stmt_q);
-    $q = mysqli_fetch_assoc($qres);
+    // Check not already answered
+    $stmt = mysqli_prepare($conn,
+        "SELECT id FROM practice_answers
+         WHERE user_id = ? AND purchased_id = ? AND question_id = ? LIMIT 1"
+    );
+    mysqli_stmt_bind_param($stmt, 'iii', $user_id, $purchased_id, $question_id);
+    mysqli_stmt_execute($stmt);
+    $r       = mysqli_stmt_get_result($stmt);
+    $already = mysqli_fetch_assoc($r);
+    mysqli_free_result($r);
+    mysqli_stmt_close($stmt);
 
-    if(!$q){
+    if ($already) {
+        echo json_encode(['error' => 'Already answered']);
+        exit;
+    }
+
+    // Fetch correct answer + explanation
+    $stmt = mysqli_prepare($conn,
+        "SELECT answer, explanation FROM questions
+         WHERE id = ? AND question_set_id = ? LIMIT 1"
+    );
+    mysqli_stmt_bind_param($stmt, 'ii', $question_id, $question_set_id);
+    mysqli_stmt_execute($stmt);
+    $r = mysqli_stmt_get_result($stmt);
+    $q = mysqli_fetch_assoc($r);
+    mysqli_free_result($r);
+    mysqli_stmt_close($stmt);
+
+    if (!$q) {
         echo json_encode(['error' => 'Question not found']);
         exit;
     }
 
-    $correct    = strtoupper($q['answer']);
+    $correct    = strtoupper(trim($q['answer']));
     $is_correct = ($selected === $correct) ? 1 : 0;
 
-    $stmt_ins = mysqli_prepare($conn,
-        "INSERT INTO practice_answers (user_id, topic_id, mcq_id, selected_option, is_correct, product_id)
-        VALUES (?, ?, ?, ?, ?, ?)
-        ON DUPLICATE KEY UPDATE
-            selected_option = VALUES(selected_option),
-            is_correct = VALUES(is_correct),
-            updated_at = CURRENT_TIMESTAMP"
+    $stmt = mysqli_prepare($conn,
+        "INSERT INTO practice_answers
+             (user_id, purchased_id, question_set_id, question_id, selected_option, is_correct)
+         VALUES (?, ?, ?, ?, ?, ?)"
     );
-    mysqli_stmt_bind_param($stmt_ins, "iiisii", $user_id, $topic_id_ajax, $mcq_id, $selected, $is_correct, $product_id_ajax);
-    mysqli_stmt_execute($stmt_ins);
-    mysqli_stmt_close($stmt_ins);
+    mysqli_stmt_bind_param($stmt, 'iiiisi', $user_id, $purchased_id, $question_set_id, $question_id, $selected, $is_correct);
 
-
-    echo json_encode([
-        'correct'     => $correct,
-        'is_correct'  => $is_correct,
-        'explanation' => $q['explanation']
-    ]);
-    exit;
-}
-// ===================== AJAX: RESET ANSWERS =====================
-if(isset($_POST['ajax_reset']) && $_POST['ajax_reset']=='1'){
-    $reset_type = $_POST['type'];
-    // Use product_id from URL / JS
-    $product_id = isset($_POST['product_id']) ? intval($_POST['product_id']) : 0;
-
-    if($reset_type === 'subset'){
-    $stmt_reset = mysqli_prepare($conn,
-        "DELETE pa FROM practice_answers pa
-         JOIN mcqs m ON pa.mcq_id = m.id
-         WHERE pa.user_id = ? AND pa.topic_id = ? AND m.sub_set_number = ? AND pa.product_id = ?"
-    );
-    mysqli_stmt_bind_param($stmt_reset, "iiii", $user_id, $topic_id, $subset, $product_id);
-    mysqli_stmt_execute($stmt_reset);
-    mysqli_stmt_close($stmt_reset);
-    } elseif($reset_type === 'topic'){
-        $stmt_reset = mysqli_prepare($conn,
-            "DELETE FROM practice_answers WHERE user_id = ? AND topic_id = ? AND product_id = ?"
-        );
-        mysqli_stmt_bind_param($stmt_reset, "iii", $user_id, $topic_id, $product_id);
-        mysqli_stmt_execute($stmt_reset);
-        mysqli_stmt_close($stmt_reset);
-    } elseif($reset_type === 'course'){
-        $stmt_reset = mysqli_prepare($conn,
-            "DELETE FROM practice_answers WHERE user_id = ? AND product_id = ?"
-        );
-        mysqli_stmt_bind_param($stmt_reset, "ii", $user_id, $product_id);
-        mysqli_stmt_execute($stmt_reset);
-        mysqli_stmt_close($stmt_reset);
+    if (mysqli_stmt_execute($stmt)) {
+        mysqli_stmt_close($stmt);
+        echo json_encode([
+            'correct'     => $correct,
+            'is_correct'  => $is_correct,
+            'explanation' => $q['explanation'] ?? ''
+        ]);
+    } else {
+        mysqli_stmt_close($stmt);
+        echo json_encode(['error' => 'Save failed']);
     }
-
-    echo json_encode(['status'=>'ok']);
     exit;
 }
 
-// ===================== FETCH QUESTIONS =====================
-$stmt_mcqs = mysqli_prepare($conn,
-    "SELECT m.id AS mcq_id, m.sub_set_number,
-            q.id, q.question, q.option_a, q.option_b, q.option_c, q.option_d, q.answer, q.explanation,
-            pa.selected_option
-     FROM mcqs m
-     JOIN questions q ON q.mcq_id = m.id
-     LEFT JOIN practice_answers pa ON pa.mcq_id = m.id AND pa.user_id = ? AND pa.product_id = ?
-     WHERE m.topic_id = ? AND m.sub_set_number = ? AND m.verified = 'true' AND m.status = 'live'
-     ORDER BY m.id ASC"
-);
-mysqli_stmt_bind_param($stmt_mcqs, "iiii", $user_id, $product_id, $topic_id, $subset);
-mysqli_stmt_execute($stmt_mcqs);
-$mcqs_result = mysqli_stmt_get_result($stmt_mcqs);
-mysqli_stmt_close($stmt_mcqs);
+// ── Validate GET params ───────────────────────────────────────────────────
+$purchased_id = isset($_GET['purchased_id']) && ctype_digit($_GET['purchased_id']) ? (int)$_GET['purchased_id'] : 0;
+$topic_id     = isset($_GET['topic_id'])     && ctype_digit($_GET['topic_id'])     ? (int)$_GET['topic_id']     : 0;
+$subset_no    = isset($_GET['subset_no'])    && ctype_digit($_GET['subset_no'])    ? (int)$_GET['subset_no']    : 0;
 
-$questions = [];
-while($row = mysqli_fetch_assoc($mcqs_result)){
-    $questions[] = [
-        'mcq'         => ['id' => $row['mcq_id']],
+if ($purchased_id === 0 || $topic_id === 0 || $subset_no === 0) {
+    header("Location: product-mine.php");
+    exit;
+}
+
+// ── Validate purchase ─────────────────────────────────────────────────────
+$stmt = mysqli_prepare($conn,
+    "SELECT pp.id, p.exam_body_id, p.name AS product_name, pp.expires_at
+     FROM purchased_products pp
+     JOIN products p ON p.id = pp.product_id
+     WHERE pp.id = ? AND pp.user_id = ? AND pp.status = 'active'
+       AND p.product_type = 'practice' AND pp.expires_at >= CURDATE()
+     LIMIT 1"
+);
+mysqli_stmt_bind_param($stmt, 'ii', $purchased_id, $user_id);
+mysqli_stmt_execute($stmt);
+$r        = mysqli_stmt_get_result($stmt);
+$purchase = mysqli_fetch_assoc($r);
+mysqli_free_result($r);
+mysqli_stmt_close($stmt);
+
+if (!$purchase) {
+    header("Location: product-mine.php");
+    exit;
+}
+
+// ── Validate topic ────────────────────────────────────────────────────────
+$stmt = mysqli_prepare($conn,
+    "SELECT t.id, t.name AS topic_name, t.subject_id,
+            s.name AS subject_name
+     FROM topics t
+     JOIN subjects s ON s.id = t.subject_id
+     WHERE t.id = ? AND s.exam_body_id = ?
+     LIMIT 1"
+);
+mysqli_stmt_bind_param($stmt, 'ii', $topic_id, $purchase['exam_body_id']);
+mysqli_stmt_execute($stmt);
+$r     = mysqli_stmt_get_result($stmt);
+$topic = mysqli_fetch_assoc($r);
+mysqli_free_result($r);
+mysqli_stmt_close($stmt);
+
+if (!$topic) {
+    header("Location: product-mine.php");
+    exit;
+}
+
+// ── Fetch all questions for this subset ───────────────────────────────────
+$stmt = mysqli_prepare($conn,
+    "SELECT qs.id AS question_set_id, qs.passage_text, qs.image_path,
+            q.id  AS question_id, q.question,
+            q.option_a, q.option_b, q.option_c, q.option_d,
+            q.answer, q.explanation,
+            pa.selected_option, pa.is_correct
+     FROM question_sets qs
+     JOIN questions q        ON q.question_set_id = qs.id
+     LEFT JOIN practice_answers pa
+            ON pa.question_id = q.id
+           AND pa.user_id = ? AND pa.purchased_id = ?
+     WHERE qs.topic_id = ? AND qs.subset_no = ?
+       AND qs.verified = 1 AND qs.status = 'published' AND qs.source = 'practice'
+     ORDER BY qs.id ASC, q.id ASC"
+);
+mysqli_stmt_bind_param($stmt, 'iiii', $user_id, $purchased_id, $topic_id, $subset_no);
+mysqli_stmt_execute($stmt);
+$r   = mysqli_stmt_get_result($stmt);
+$raw = mysqli_fetch_all($r, MYSQLI_ASSOC);
+mysqli_free_result($r);
+mysqli_stmt_close($stmt);
+
+if (empty($raw)) {
+    header("Location: practice-sets.php?purchased_id={$purchased_id}&topic_id={$topic_id}");
+    exit;
+}
+
+// ── Group by question_set ─────────────────────────────────────────────────
+$sets = [];
+foreach ($raw as $row) {
+    $qs_id = (int)$row['question_set_id'];
+    if (!isset($sets[$qs_id])) {
+        $sets[$qs_id] = [
+            'id'           => $qs_id,
+            'passage_text' => $row['passage_text'],
+            'image_path'   => $row['image_path'],
+            'questions'    => []
+        ];
+    }
+    $answered = $row['selected_option'] !== null;
+    $sets[$qs_id]['questions'][] = [
+        'id'          => (int)$row['question_id'],
         'question'    => $row['question'],
         'option_a'    => $row['option_a'],
         'option_b'    => $row['option_b'],
         'option_c'    => $row['option_c'],
         'option_d'    => $row['option_d'],
-        'answer'      => $row['answer'],
-        'explanation' => $row['explanation'],
         'selected'    => $row['selected_option'],
+        'answer'      => $answered ? strtoupper($row['answer'])  : null,
+        'explanation' => $answered ? ($row['explanation'] ?? '') : null,
+        'is_correct'  => $answered ? (int)$row['is_correct']     : null
     ];
 }
+$sets       = array_values($sets);
+$total_sets = count($sets);
 
-$total_questions = count($questions);
-if($total_questions==0) die("No practice questions available.");
-
-// Resume where left off
-$q_index = 0;
-$stmt_last = mysqli_prepare($conn,
-    "SELECT pa.mcq_id
-     FROM practice_answers pa
-     JOIN mcqs m ON pa.mcq_id = m.id
-     WHERE pa.user_id = ? AND pa.topic_id = ? AND pa.product_id = ? AND m.sub_set_number = ?
-     ORDER BY pa.id DESC
-     LIMIT 1"
-);
-mysqli_stmt_bind_param($stmt_last, "iiii", $user_id, $topic_id, $product_id, $subset);
-mysqli_stmt_execute($stmt_last);
-$last_ans_res = mysqli_stmt_get_result($stmt_last);
-mysqli_stmt_close($stmt_last);
-
-if ($last_ans_row = mysqli_fetch_assoc($last_ans_res)) {
-    $resume_mcq_id = $last_ans_row['mcq_id'];
-    foreach ($questions as $idx => $q) {
-        if ($q['mcq']['id'] == $resume_mcq_id) {
-            $q_index = $idx;
-            break;
+// ── Resume: first set with unanswered questions ───────────────────────────
+$resume_index = $total_sets - 1;
+foreach ($sets as $idx => $set) {
+    foreach ($set['questions'] as $q) {
+        if ($q['selected'] === null) {
+            $resume_index = $idx;
+            break 2;
         }
     }
-} elseif(isset($_GET['q'])) {
-    $q_index = max(0, min(intval($_GET['q']), $total_questions-1));
 }
-
-$current = $questions[$q_index];
-
-// Strip sensitive fields before passing to JS
-$questions_js = array_map(function($q) {
-    $item = [
-        'mcq'      => ['id' => $q['mcq']['id']],
-        'question' => $q['question'],
-        'option_a' => $q['option_a'],
-        'option_b' => $q['option_b'],
-        'option_c' => $q['option_c'],
-        'option_d' => $q['option_d'],
-        'selected' => $q['selected'],
-    ];
-    if(!empty($q['selected'])){
-        $item['answer'] = $q['answer'];
-    }
-    return $item;
-}, $questions);
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<title>Practice Mode</title>
-
-<?php include("src/inc/links.php"); ?>
-<style>
-.option-box{border:1px solid #ddd;padding:12px;margin-bottom:8px;border-radius:5px;cursor:pointer;}
-.option-box.correct{background:#d4edda;border-color:#28a745;}
-.option-box.wrong{background:#f8d7da;border-color:#dc3545;}
-.question-wrapper{position: relative;}
-.report-btn{position: absolute;top: 10px; right: 10px; z-index: 10;}
-@media (max-width: 767px) {
-    #q-palette {display: flex; flex-wrap: nowrap; overflow-x: auto;}
-    #q-palette .q-badge {flex: 0 0 auto; margin-right: 5px;}
-}
-/* Optional: subtle swipe hint for mobile */
-#question-container::after {
-    content: "Swipe ⬅️ ➡️";
-    display: block;
-    text-align: center;
-    font-size: 0.75rem;
-    color: #6c757d;
-    opacity: 0.6;           /* subtle */
-    margin-top: 5px;        /* tighter spacing */
-    font-style: italic;      /* makes it look less heavy */
-}
-
-@media(min-width:768px){
-    #question-container::after { display: none; } /* hide on desktop */
-}
-
-
-#question-wrapper {
-    overflow: hidden;
-    position: relative;
-}
-
-#question-container {
-    transition: transform 0.3s ease, opacity 0.3s ease;
-    position: relative;
-    opacity: 1;
-}
-
-
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><?= htmlspecialchars($topic['topic_name'], ENT_QUOTES, 'UTF-8') ?> — Set <?= $subset_no ?></title>
+    <?php include "inc/links.php"; ?>
 </head>
 <body>
-<?php include("src/inc/header.php"); ?>
+<?php include "inc/header.php"; ?>
 
-<div class="container-fluid mt-4">
-<div class="mb-3">
-    <a href="subsets.php?group_id=<?php echo (int) $group_id; ?>&product_id=<?php echo (int) $product_id; ?>" 
-   class="btn btn-outline-primary btn-sm">← Back to Subsets</a>
-</div>
+<div class="container py-4">
+    <div class="pq-wrapper">
 
-<h5 style="color:var(--primary)">
-    Practice Mode – <?php echo htmlspecialchars($topic['name']); ?> (Subset <?php echo $subset; ?>)
-</h5>
+        <!-- Breadcrumb + back -->
+        <div class="qs-breadcrumb mb-2">
+            <?= htmlspecialchars($purchase['product_name'], ENT_QUOTES, 'UTF-8') ?>
+            &rsaquo; <?= htmlspecialchars($topic['subject_name'], ENT_QUOTES, 'UTF-8') ?>
+            &rsaquo; <?= htmlspecialchars($topic['topic_name'], ENT_QUOTES, 'UTF-8') ?>
+            &rsaquo; Set <?= $subset_no ?>
+        </div>
+        <div class="d-flex align-items-center justify-content-between mb-3">
+            <a href="practice-sets.php?purchased_id=<?= $purchased_id ?>&topic_id=<?= $topic_id ?>"
+               class="btn-qs-sm">&larr; Back</a>
+            <div id="pq-set-label" class="pq-set-label">Set <span id="pq-current">1</span> of <?= $total_sets ?></div>
+            <button id="report-btn" class="btn-reset-sm">Report</button>
+        </div>
 
-<div class="row mt-3">
-<div class="col-md-8">
-<div class="border rounded shadow p-4">
-<div class="question-wrapper border rounded shadow p-4" id="question-container">
-    <button class="btn btn-warning btn-sm report-btn" id="report-btn">🚩 Report</button>
-    <h6>Question <span id="q-number"><?php echo $q_index+1; ?></span> / <?php echo $total_questions; ?></h6>
-    <div id="q-text"><?php echo strip_tags($current['question'], '<p><br><strong><em><span><table><tr><td><th><ul><ol><li>'); ?></div>
-    <?php
-    $opts = ['A'=>$current['option_a'],'B'=>$current['option_b'],'C'=>$current['option_c'],'D'=>$current['option_d']];
-    foreach($opts as $key=>$val):
-        $checked = ($current['selected']==$key) ? 'checked' : '';
-        $disabled = !empty($current['selected']) ? 'disabled' : '';
-        $class = '';
-        if(!empty($current['selected'])){
-            $correct_answer = strtoupper($current['answer']);
-            if($key==$correct_answer) $class='correct';
-            elseif($key==$current['selected']) $class='wrong';
-        }
-    ?>
-    <div class="option-box <?php echo $class; ?>" data-opt="<?php echo $key; ?>">
-        <label>
-        <input type="radio" class="answer" name="answer" value="<?php echo $key; ?>" data-mcq="<?php echo $current['mcq']['id']; ?>" <?php echo $checked.' '.$disabled; ?>>
-        <?php echo htmlspecialchars($val); ?>
-        </label>
-    </div>
-    <?php endforeach; ?>
+        <!-- Question container -->
+        <div id="question-container" class="pq-container">
+            <!-- Rendered by JS -->
+        </div>
 
-    <div id="explanation" class="alert alert-info mt-3 <?php echo empty($current['selected'])?'d-none':''; ?>">
-        <?php echo !empty($current['selected']) ? '<b>Explanation:</b><br>' . strip_tags($current['explanation'], '<p><br><strong><em><span>') : ''; ?>
+        <!-- Navigation -->
+        <div class="pq-nav mt-3">
+            <button id="prev-btn" class="btn-qs-sm" disabled>&larr; Prev</button>
+            <span id="pq-answered-count" class="mp-meta"></span>
+            <button id="next-btn" class="btn-qs-sm">Next &rarr;</button>
+        </div>
+
+        <!-- Palette -->
+        <div class="pq-palette mt-3" id="q-palette">
+            <?php foreach ($sets as $idx => $set): ?>
+                <div class="pq-badge pq-badge-unanswered" data-index="<?= $idx ?>"><?= $idx + 1 ?></div>
+            <?php endforeach; ?>
+        </div>
+
     </div>
 </div>
 
-<div class="d-flex justify-content-between mt-3">
-    <button id="prev-btn" class="btn btn-secondary btn-sm" <?php echo ($q_index==0)?'disabled':''; ?>>Previous</button>
-    <button id="next-btn" class="btn btn-primary btn-sm" <?php echo ($q_index==$total_questions-1)?'disabled':''; ?>>Next</button>
-</div>
-</div>
-</div>
-
-<div class="col-md-4">
-<div class="border rounded shadow p-3">
-<h6>Questions</h6>
-<div class="d-flex flex-wrap" id="q-palette">
-<?php for($i=0;$i<$total_questions;$i++): ?>
-<a href="#" class="badge m-1 q-badge <?php
-$sel=$questions[$i]['selected']??'';
-if($sel){
-    echo (strtoupper($questions[$i]['answer'])==$sel)?'bg-success':'bg-danger';
-}else{
-    echo ($i==$q_index)?'bg-primary':'bg-secondary';
-}
-?>" data-index="<?php echo $i; ?>"><?php echo $i+1; ?></a>
-<?php endfor; ?>
-</div>
-</div>
-</div>
-
-</div>
-</div>
-
-<!-- REPORT MODAL -->
-<div class="modal fade" id="reportModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">Report Issue</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <textarea id="reportText" class="form-control" rows="4" placeholder="Describe the issue with this question"></textarea>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button type="button" id="submitReport" class="btn btn-warning">Submit Report</button>
-      </div>
+<!-- Report Modal -->
+<div class="modal fade" id="reportModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content" style="background:#13131a;border:1px solid #2a2a3a;">
+            <div class="modal-header" style="border-color:#2a2a3a;">
+                <h5 class="modal-title" style="color:var(--accent);">Report Issue</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <textarea id="reportText" class="form-control"
+                          style="background:#0a0a0f;color:#ccc;border-color:#2a2a3a;"
+                          rows="4" placeholder="Describe the issue with this question set"></textarea>
+            </div>
+            <div class="modal-footer" style="border-color:#2a2a3a;">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" id="submitReport" class="btn-qs-gold">Submit</button>
+            </div>
+        </div>
     </div>
-  </div>
 </div>
+
+<div id="csrf-holder" style="display:none;"><?= csrf_input() ?></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/hammer.js/2.0.8/hammer.min.js"></script>
-
 <script>
-let questions = <?php echo json_encode($questions_js); ?>;
-let currentIndex = <?php echo $q_index; ?>;
-let totalQuestions = <?php echo $total_questions; ?>;
-let currentMcqId = questions[currentIndex].mcq.id;
-let isAnimating = false; // Prevent multiple rapid swipes
+const sets         = <?= json_encode($sets) ?>;
+const purchasedId  = <?= $purchased_id ?>;
+const topicId      = <?= $topic_id ?>;
+const totalSets    = <?= $total_sets ?>;
+let   currentIndex = <?= $resume_index ?>;
+let   isAnimating  = false;
 
-function updateCurrentMcqId() {
-    currentMcqId = questions[currentIndex].mcq.id;
+function getCsrf() {
+    const el = document.querySelector('#csrf-holder input[type="hidden"]');
+    return el ? { name: el.name, value: el.value } : null;
 }
 
-function loadQuestion(index) {
-    currentIndex = index;
-    updateCurrentMcqId();
-    let q = questions[index];
-    $('#q-number').text(index + 1);
-    $('#q-text').html(q.question);
-
-    if (q.explanation && q.explanation.trim() !== '') {
-        $('#explanation').removeClass('d-none').html('<b>Explanation:</b><br>' + q.explanation);
-    } else {
-        $('#explanation').addClass('d-none').html('');
-    }
-
-    let $container = $('#question-container');
-    $container.find('.option-box').remove();
-
-    let opts = {'A': q.option_a, 'B': q.option_b, 'C': q.option_c, 'D': q.option_d};
-    for (let key in opts) {
-        let val = opts[key];
-        let selected = q.selected;
-        let correct_answer = q.answer ? q.answer.toUpperCase() : null;
-        let className = '';
-        if (selected && correct_answer) {
-            if (key === correct_answer) className = 'correct';
-            else if (key === selected) className = 'wrong';
+function getSetStatus(set) {
+    let answered = 0, correct = 0;
+    set.questions.forEach(q => {
+        if (q.selected) {
+            answered++;
+            if (q.is_correct === 1) correct++;
         }
-        let html = `<div class="option-box ${className}" data-opt="${key}">
-                        <label>
-                            <input type="radio" class="answer" name="answer" value="${key}" data-mcq="${q.mcq.id}" ${selected ? 'disabled' : ''}>
-                            ${val}
-                        </label>
-                    </div>`;
-        $container.append(html);
-    }
+    });
+    const total = set.questions.length;
+    if (answered === 0)             return 'unanswered';
+    if (answered < total)           return 'partial';
+    if (correct === total)          return 'correct';
+    return 'wrong';
+}
 
-    $('#prev-btn').prop('disabled', index === 0);
-    $('#next-btn').prop('disabled', index === totalQuestions - 1);
-
-    $('#q-palette .q-badge').each(function(i){
-        let sel = questions[i].selected;
-        $(this).removeClass('bg-primary bg-secondary bg-success bg-danger');
-        if(i === index){
-            $(this).addClass('bg-primary');
-        } else if(sel){
-            if(questions[i].answer && sel.toUpperCase() === questions[i].answer.toUpperCase()) $(this).addClass('bg-success');
-            else $(this).addClass('bg-danger');
+function updatePalette() {
+    $('#q-palette .pq-badge').each(function(i) {
+        const status = getSetStatus(sets[i]);
+        $(this).removeClass('pq-badge-current pq-badge-correct pq-badge-wrong pq-badge-partial pq-badge-unanswered');
+        if (i === currentIndex) {
+            $(this).addClass('pq-badge-current');
         } else {
-            $(this).addClass('bg-secondary');
+            const cls = {
+                correct:    'pq-badge-correct',
+                wrong:      'pq-badge-wrong',
+                partial:    'pq-badge-partial',
+                unanswered: 'pq-badge-unanswered'
+            }[status] || 'pq-badge-unanswered';
+            $(this).addClass(cls);
         }
     });
 }
 
-function saveAnswer(mcq_id, selected, topic_id, product_id) {
-    $.post('practice.php', {
-        ajax: 1,
-        csrf_token: '<?php echo csrf_token(); ?>',
-        mcq_id: mcq_id,
-        selected: selected,
-        topic_id: topic_id,
-        product_id: product_id
-    }, function(res) {
-        if (res.error) return alert(res.error);
-        questions[currentIndex].selected = selected;
-        questions[currentIndex].answer = res.correct;
-
-        $('#question-container .option-box').each(function() {
-            let opt = $(this).data('opt');
-            $(this).removeClass('correct wrong');
-            if (opt === res.correct) $(this).addClass('correct');
-            if (opt === selected && opt !== res.correct) $(this).addClass('wrong');
-            $(this).find('input.answer').prop('disabled', true);
+function updateAnsweredCount() {
+    let total = 0, answered = 0;
+    sets.forEach(set => {
+        set.questions.forEach(q => {
+            total++;
+            if (q.selected) answered++;
         });
-
-        // Only show explanation if returned
-        if(res.explanation && res.explanation.trim() !== '') {
-            $('#explanation').removeClass('d-none').html('<b>Explanation:</b><br>' + res.explanation);
-        } else {
-            $('#explanation').addClass('d-none').html('');
-        }
-
-        let $badge = $('#q-palette .q-badge').eq(currentIndex);
-        if (selected === res.correct) $badge.removeClass('bg-secondary bg-primary bg-danger').addClass('bg-success');
-        else $badge.removeClass('bg-secondary bg-primary bg-success').addClass('bg-danger');
-    }, 'json');
+    });
+    $('#pq-answered-count').text(answered + '/' + total + ' answered');
 }
 
-// Handle option selection
-$(document).on('click', '.answer', function() {
-    let mcq_id = $(this).data('mcq');
-    let selected = $(this).val();
-    saveAnswer(mcq_id, selected, <?php echo $topic_id; ?>, <?php echo $product_id; ?>);
-});
+function renderSet(index) {
+    const set = sets[index];
+    let html  = '';
 
-// Swipe animation
+    // Passage
+    if (set.passage_text && set.passage_text.trim() !== '') {
+        html += `<div class="pq-passage">${set.passage_text}</div>`;
+    }
+
+    // Image
+    if (set.image_path && set.image_path.trim() !== '') {
+        html += `<img src="${set.image_path}" class="pq-image" alt="Question image">`;
+    }
+
+    // Questions
+    set.questions.forEach((q, qi) => {
+        const multi = set.questions.length > 1;
+        html += `<div class="pq-question-block" data-qid="${q.id}" data-qsid="${set.id}">`;
+
+        if (multi) {
+            html += `<div class="pq-q-num">Q${qi + 1}</div>`;
+        }
+
+        html += `<div class="pq-q-text">${q.question}</div>`;
+        html += `<div class="pq-options">`;
+
+        ['A','B','C','D'].forEach(key => {
+            const val       = q['option_' + key.toLowerCase()];
+            const answered  = q.selected !== null;
+            const isCorrect = q.answer === key;
+            const isSelected = q.selected === key;
+
+            let cls = 'pq-option';
+            if (answered) {
+                cls += ' pq-answered';
+                if (isCorrect)                       cls += ' pq-correct';
+                else if (isSelected && !isCorrect)   cls += ' pq-wrong';
+            }
+
+            const disabled = answered ? 'disabled' : '';
+            html += `<label class="${cls}">
+                        <input type="radio" class="pq-answer" name="ans_${q.id}"
+                               value="${key}" data-qid="${q.id}" data-qsid="${set.id}"
+                               ${isSelected ? 'checked' : ''} ${disabled}>
+                        <span class="pq-opt-letter">${key}.</span> ${val}
+                     </label>`;
+        });
+
+        html += `</div>`;
+
+        // Explanation
+        if (q.selected && q.explanation && q.explanation.trim() !== '') {
+            html += `<div class="pq-explanation"><strong>Explanation:</strong> ${q.explanation}</div>`;
+        } else if (q.selected) {
+            html += `<div class="pq-explanation pq-no-explanation"></div>`;
+        }
+
+        html += `</div>`;
+    });
+
+    return html;
+}
+
+function loadSet(index) {
+    currentIndex = index;
+    $('#pq-current').text(index + 1);
+    $('#question-container').html(renderSet(index));
+    $('#prev-btn').prop('disabled', index === 0);
+    $('#next-btn').prop('disabled', index === totalSets - 1);
+    updatePalette();
+    updateAnsweredCount();
+    window.scrollTo(0, 0);
+}
+
 function animateSwipe(nextIndex, direction) {
-    if (nextIndex < 0 || nextIndex >= totalQuestions) return;
-    if (isAnimating) return;
+    if (nextIndex < 0 || nextIndex >= totalSets || isAnimating) return;
     isAnimating = true;
 
-    const $container = $('#question-container');
+    const $c = $('#question-container');
+    $c.css({ transition: 'transform 0.25s ease, opacity 0.25s ease',
+             transform: direction === 'left' ? 'translateX(-100%)' : 'translateX(100%)',
+             opacity: 0 });
 
-    // Slide out current question
-    $container.css({
-        'transition': 'transform 0.3s ease, opacity 0.3s ease',
-        'transform': direction === 'left' ? 'translateX(-100%)' : 'translateX(100%)',
-        'opacity': 0
+    $c.one('transitionend', function () {
+        loadSet(nextIndex);
+        $c.css({ transition: 'none', transform: direction === 'left' ? 'translateX(100%)' : 'translateX(-100%)', opacity: 1 });
+        $c[0].offsetHeight; // reflow
+        $c.css({ transition: 'transform 0.25s ease, opacity 0.25s ease', transform: 'translateX(0)', opacity: 1 });
+        $c.one('transitionend', () => { isAnimating = false; });
     });
+}
 
-    $container.one('transitionend', function() {
-        // Load next question
-        currentIndex = nextIndex;
-        loadQuestion(nextIndex);
+// Answer click
+$(document).on('change', '.pq-answer', function () {
+    const qid   = parseInt($(this).data('qid'));
+    const qsid  = parseInt($(this).data('qsid'));
+    const selected = $(this).val();
 
-        // Update palette highlight
-        $('#q-palette .q-badge').removeClass('bg-primary').eq(currentIndex).addClass('bg-primary');
+    // Disable all options for this question immediately
+    $(this).closest('.pq-question-block').find('.pq-answer').prop('disabled', true);
 
-        // Position new question off-screen opposite to swipe
-        $container.css('transition', 'none');
-        $container.css('transform', direction === 'left' ? 'translateX(100%)' : 'translateX(-100%)');
-        $container.css('opacity', 1);
+    const csrf  = getCsrf();
+    const payload = { ajax: 1, purchased_id: purchasedId, question_set_id: qsid, question_id: qid, selected: selected };
+    if (csrf) payload[csrf.name] = csrf.value;
 
-        // Force reflow
-        $container[0].offsetHeight;
+    $.post('practice.php', payload, function (res) {
+        if (res.error) {
+            alert(res.error);
+            return;
+        }
 
-        // Slide new question into view
-        $container.css('transition', 'transform 0.3s ease, opacity 0.3s ease');
-        $container.css('transform', 'translateX(0)');
+        // Update JS set data
+        const set = sets.find(s => s.id === qsid);
+        if (set) {
+            const q = set.questions.find(q => q.id === qid);
+            if (q) {
+                q.selected    = selected;
+                q.answer      = res.correct;
+                q.explanation = res.explanation;
+                q.is_correct  = res.is_correct;
+            }
+        }
 
-        $container.one('transitionend', function() {
-            isAnimating = false;
+        // Update UI
+        const $block = $(`.pq-question-block[data-qid="${qid}"]`);
+        $block.find('.pq-option').each(function () {
+            const val = $(this).find('.pq-answer').val();
+            $(this).addClass('pq-answered');
+            if (val === res.correct)                          $(this).addClass('pq-correct');
+            else if (val === selected && val !== res.correct) $(this).addClass('pq-wrong');
         });
-    });
-}
 
-// Hammer.js swipe gestures
-const questionContainer = document.getElementById('question-container');
-if (questionContainer) {
-    const hammer = new Hammer(questionContainer);
-    hammer.on('swipeleft', () => animateSwipe(currentIndex + 1, 'left'));
-    hammer.on('swiperight', () => animateSwipe(currentIndex - 1, 'right'));
-}
+        if (res.explanation && res.explanation.trim() !== '') {
+            $block.find('.pq-explanation')
+                  .removeClass('pq-no-explanation')
+                  .html('<strong>Explanation:</strong> ' + res.explanation);
+        }
 
-// Next / Previous buttons
-$('#next-btn').off('click').on('click', () => animateSwipe(currentIndex + 1, 'left'));
-$('#prev-btn').off('click').on('click', () => animateSwipe(currentIndex - 1, 'right'));
-
-// Question palette clicks
-$(document).off('click', '.q-badge').on('click', '.q-badge', function() {
-    let index = $(this).data('index');
-    if (index === currentIndex) return;
-    let direction = (index > currentIndex) ? 'left' : 'right';
-    animateSwipe(index, direction);
+        updatePalette();
+        updateAnsweredCount();
+    }, 'json');
 });
 
-// Report button
-$('#report-btn').click(function() {
-    updateCurrentMcqId();
+// Palette click
+$(document).on('click', '.pq-badge', function () {
+    const idx = parseInt($(this).data('index'));
+    if (idx === currentIndex) return;
+    animateSwipe(idx, idx > currentIndex ? 'left' : 'right');
+});
+
+// Prev / Next
+$('#prev-btn').on('click', () => animateSwipe(currentIndex - 1, 'right'));
+$('#next-btn').on('click', () => animateSwipe(currentIndex + 1, 'left'));
+
+// Swipe
+const hammer = new Hammer(document.getElementById('question-container'));
+hammer.on('swipeleft',  () => animateSwipe(currentIndex + 1, 'left'));
+hammer.on('swiperight', () => animateSwipe(currentIndex - 1, 'right'));
+
+// Report
+$('#report-btn').on('click', function () {
     $('#reportText').val('');
-    var reportModal = new bootstrap.Modal(document.getElementById('reportModal'));
-    reportModal.show();
+    new bootstrap.Modal(document.getElementById('reportModal')).show();
 });
 
-// Submit report
-$('#submitReport').click(function() {
-    let reason = $('#reportText').val().trim();
-    if (!reason) { alert('Please enter a description'); return; }
-    $.post('report-mcq.php', { mcq_id: currentMcqId, reason: reason, csrf_token: '<?php echo csrf_token(); ?>' }, function(res) {
+$('#submitReport').on('click', function () {
+    const reason = $('#reportText').val().trim();
+    if (!reason) { alert('Please describe the issue.'); return; }
+
+    const csrf    = getCsrf();
+    const payload = { question_set_id: sets[currentIndex].id, reason: reason };
+    if (csrf) payload[csrf.name] = csrf.value;
+
+    $.post('report-mcq.php', payload, function (res) {
         if (res.status === 'ok') {
-            alert('Thank you! The issue has been reported.');
-            var reportModal = bootstrap.Modal.getInstance(document.getElementById('reportModal'));
-            reportModal.hide();
+            alert('Reported. Thank you.');
+            bootstrap.Modal.getInstance(document.getElementById('reportModal')).hide();
         } else {
-            alert('Error: ' + res.message);
+            alert('Error: ' + (res.message || 'Failed'));
         }
     }, 'json');
 });
+
+// Init
+loadSet(currentIndex);
 </script>
 
-
-<?php include("src/inc/footer.php"); ?>
+<?php include "inc/footer.php"; ?>
 </body>
 </html>
