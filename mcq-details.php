@@ -17,17 +17,17 @@ $ref_past_paper_id = isset($_GET['past_paper_id']) && ctype_digit($_GET['past_pa
 
 if ($ref === 'unverified') {
     if ($ref_past_paper_id > 0) {
-        $back_url = 'unverified-mcq-details.php?past_paper_id=' . $ref_past_paper_id;
+        $back_url = 'unverified-mcq-list.php?past_paper_id=' . $ref_past_paper_id;
     } elseif ($ref_topic_id > 0) {
-        $back_url = 'unverified-mcq-details.php?topic_id=' . $ref_topic_id;
+        $back_url = 'unverified-mcq-list.php?topic_id=' . $ref_topic_id;
     } else {
         $back_url = '';
     }
 } elseif ($ref === 'draft') {
     if ($ref_past_paper_id > 0) {
-        $back_url = 'draft-mcq-details.php?past_paper_id=' . $ref_past_paper_id;
+        $back_url = 'draft-mcq-list.php?past_paper_id=' . $ref_past_paper_id;
     } elseif ($ref_topic_id > 0) {
-        $back_url = 'draft-mcq-details.php?topic_id=' . $ref_topic_id;
+        $back_url = 'draft-mcq-list.php?topic_id=' . $ref_topic_id;
     } else {
         $back_url = '';
     }

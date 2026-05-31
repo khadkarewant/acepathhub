@@ -47,9 +47,9 @@ $ok = mysqli_stmt_execute($stmt);
 mysqli_stmt_close($stmt);
 
 if (!$ok) {
-    header('Location: draft-mcq-details.php?topic_id=' . $topic_id . '&err=1');
+    header('Location: draft-mcq-list.php?topic_id=' . $topic_id . '&err=1');
     exit;
 }
 
-header('Location: draft-mcq-details.php?topic_id=' . $topic_id . '&ok=1');
+header('Location: draft-mcq-list.php?topic_id=' . $topic_id . '&ok=1');
 exit;
