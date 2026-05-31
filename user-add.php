@@ -5,7 +5,6 @@ require_once 'src/db/session.php';
 require_role(ROLE_ADMIN);
 
 $allowed_roles = [
-    ROLE_ADMIN      => 'Admin',
     ROLE_DATA_ENTRY => 'Data Entry',
 ];
 
