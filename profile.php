@@ -46,12 +46,7 @@ $u = $user; // session.php sets $user array
     <!-- Action Buttons -->
     <div class="profile-actions">
         <a href="profile-edit.php" class="btn-qs-gold">Edit Profile</a>
-        <a href="change-password.php" class="btn-qs-sm">Change Password</a>
-        <?php if (empty($u['pin'])): ?>
-            <a href="set-pin.php" class="btn-qs-sm">Set PIN</a>
-        <?php else: ?>
-            <a href="change-pin.php" class="btn-qs-sm">Change PIN</a>
-        <?php endif; ?>
+        <a href="user-password-change.php" class="btn-qs-sm">Change Password</a>
     </div>
 
     <!-- Info Cards -->
