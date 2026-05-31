@@ -25,23 +25,24 @@ if ($selected_eb_id === 0 && !empty($exam_bodies)) {
     $selected_eb_id = (int)$exam_bodies[0]['id'];
 }
 
-// 2. Topics with unverified count — admin sees all, data entry sees own
-$sql = 'SELECT t.id AS topic_id, t.name AS topic_name,
-               COUNT(qs.id) AS unverified_count
-        FROM topics t
-        JOIN subjects s       ON s.id  = t.subject_id
-        JOIN exam_bodies eb   ON eb.id = s.exam_body_id
-        JOIN question_sets qs ON qs.topic_id = t.id
-        WHERE eb.id = ? AND qs.verified = 0';
-
-if (has_role(ROLE_DATA_ENTRY)) {
-    $sql .= ' AND qs.created_by = ?';
-}
-
-$sql .= ' GROUP BY t.id ORDER BY t.id ASC';
-
-$topics = [];
+// 2. Subjects with unverified topics — admin sees all, data entry sees own
+$subjects = [];
 if ($active_tab === 'practice') {
+    $sql = 'SELECT s.id AS subject_id, s.name AS subject_name,
+                   t.id AS topic_id, t.name AS topic_name,
+                   COUNT(qs.id) AS unverified_count
+            FROM subjects s
+            JOIN topics t         ON t.subject_id = s.id
+            JOIN exam_bodies eb   ON eb.id = s.exam_body_id
+            JOIN question_sets qs ON qs.topic_id = t.id
+            WHERE eb.id = ? AND qs.verified = 0';
+
+    if (has_role(ROLE_DATA_ENTRY)) {
+        $sql .= ' AND qs.created_by = ?';
+    }
+
+    $sql .= ' GROUP BY s.id, t.id ORDER BY s.name ASC, t.name ASC';
+
     $stmt = mysqli_prepare($conn, $sql);
 
     if (has_role(ROLE_DATA_ENTRY)) {
@@ -51,10 +52,26 @@ if ($active_tab === 'practice') {
     }
 
     mysqli_stmt_execute($stmt);
-    $res    = mysqli_stmt_get_result($stmt);
-    $topics = mysqli_fetch_all($res, MYSQLI_ASSOC);
+    $res  = mysqli_stmt_get_result($stmt);
+    $rows = mysqli_fetch_all($res, MYSQLI_ASSOC);
     mysqli_free_result($res);
     mysqli_stmt_close($stmt);
+
+    // Group by subject
+    foreach ($rows as $row) {
+        $sid = $row['subject_id'];
+        if (!isset($subjects[$sid])) {
+            $subjects[$sid] = [
+                'subject_name' => $row['subject_name'],
+                'topics'       => [],
+            ];
+        }
+        $subjects[$sid]['topics'][] = [
+            'topic_id'        => $row['topic_id'],
+            'topic_name'      => $row['topic_name'],
+            'unverified_count' => $row['unverified_count'],
+        ];
+    }
 }
 
 // 3. Past papers with unverified count
@@ -135,19 +152,24 @@ if ($active_tab === 'past_paper') {
 
     <?php if ($active_tab === 'practice'): ?>
 
-        <?php if (empty($topics)): ?>
+        <?php if (empty($subjects)): ?>
             <div class="qs-empty">
                 <?= has_role(ROLE_DATA_ENTRY)
                     ? 'You have no pending unverified submissions for this exam body.'
                     : 'No unverified question sets for this exam body.' ?>
             </div>
         <?php else: ?>
-            <?php foreach ($topics as $t): ?>
-            <div class="uv-topic-row"
-                 onclick="window.location.href='unverified-mcq-details.php?topic_id=<?= $t['topic_id'] ?>'">
-                <span class="uv-topic-name"><?= htmlspecialchars($t['topic_name']) ?></span>
-                <span class="uv-topic-count"><?= $t['unverified_count'] ?> unverified</span>
-            </div>
+            <?php foreach ($subjects as $subject): ?>
+                <div class="uv-subject-header">
+                    <?= htmlspecialchars($subject['subject_name']) ?>
+                </div>
+                <?php foreach ($subject['topics'] as $t): ?>
+                    <div class="uv-topic-row"
+                        onclick="window.location.href='unverified-mcq-list.php?topic_id=<?= $t['topic_id'] ?>'">
+                        <span class="uv-topic-name"><?= htmlspecialchars($t['topic_name']) ?></span>
+                        <span class="uv-topic-count"><?= $t['unverified_count'] ?> unverified</span>
+                    </div>
+                <?php endforeach; ?>
             <?php endforeach; ?>
         <?php endif; ?>
 
@@ -162,7 +184,7 @@ if ($active_tab === 'past_paper') {
         <?php else: ?>
             <?php foreach ($past_papers as $pp): ?>
             <div class="uv-topic-row"
-                 onclick="window.location.href='unverified-mcq-details.php?past_paper_id=<?= $pp['past_paper_id'] ?>'">
+                 onclick="window.location.href='unverified-mcq-list.php?past_paper_id=<?= $pp['past_paper_id'] ?>'">
                 <span class="uv-topic-name">
                     <?= htmlspecialchars($pp['subject_name']) ?> — <?= (int)$pp['year'] ?>
                 </span>
