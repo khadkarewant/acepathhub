@@ -47,45 +47,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Add Exam Body — AcePath Hub</title>
-    <?php include("inc/links.php"); ?>
+    <?php include "inc/links.php"; ?>
 </head>
 <body>
-<?php include("inc/header.php"); ?>
+<?php include "inc/header.php"; ?>
 
 <div class="container-fluid">
-    <div class="row">
-        <div class="col-md-6 p-2 m-1">
-            <h2 style="color:var(--accent);">Add Exam Body</h2>
 
-            <?php if (!empty($errors)): ?>
-                <div class="alert alert-danger">
-                    <ul class="mb-0">
-                        <?php foreach ($errors as $e): ?>
-                            <li><?= htmlspecialchars($e, ENT_QUOTES, 'UTF-8'); ?></li>
-                        <?php endforeach; ?>
-                    </ul>
-                </div>
-            <?php endif; ?>
-
-            <form method="POST">
-                <?= csrf_input(); ?>
-
-                <div class="mb-3">
-                    <label class="form-label">Name</label>
-                    <input type="text" name="name" class="form-control" required
-                           placeholder="e.g. WAEC"
-                           value="<?= htmlspecialchars($_POST['name'] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
-                </div>
-
-                <button type="submit" class="btn"
-                        style="background:var(--accent);color:#0a0a0f;font-weight:600;">
-                    Add Exam Body
-                </button>
-            </form>
-        </div>
+    <div class="qs-list-header">
+        <div class="qs-list-title">Add Exam Body</div>
+        <a href="exam-body-list.php" class="btn-qs-sm">← Back</a>
     </div>
+
+    <?php if (!empty($errors)): ?>
+        <div class="alert alert-danger">
+            <ul class="mb-0">
+                <?php foreach ($errors as $e): ?>
+                    <li><?= htmlspecialchars($e, ENT_QUOTES, 'UTF-8') ?></li>
+                <?php endforeach; ?>
+            </ul>
+        </div>
+    <?php endif; ?>
+
+    <form method="POST" class="ep-form">
+        <?= csrf_input() ?>
+        <div class="ep-field">
+            <label class="ep-label">Name <span class="ep-required">*</span></label>
+            <input type="text" name="name" class="form-control ep-input" required
+                   placeholder="e.g. WAEC"
+                   value="<?= htmlspecialchars($_POST['name'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+        </div>
+        <div class="ep-submit">
+            <button type="submit" class="btn-qs-gold">Add Exam Body</button>
+        </div>
+    </form>
+
 </div>
 
-<?php include("inc/footer.php"); ?>
+<?php include "inc/footer.php"; ?>
 </body>
 </html>
