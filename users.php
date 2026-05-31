@@ -40,7 +40,7 @@ mysqli_stmt_close($stmt);
     </div>
 
     <div class="table-responsive">
-        <table class="table table-bordered table-hover" id="datatable">
+        <table class="table table-hover" id="datatable">
             <thead>
                 <tr>
                     <th>ID</th>
