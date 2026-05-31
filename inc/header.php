@@ -163,7 +163,7 @@
                 <a href="product-mine.php"><i class="fa-solid fa-star"></i> My Products</a>
             </div>
             <div class="side-links">
-                <a href="course.php"><i class="fa-solid fa-graduation-cap"></i> Full Course</a>
+                <a href="product-mine.php?tab=practice"><i class="fa-solid fa-graduation-cap"></i> Practice</a>
             </div>
             <div class="side-links">
                 <a href="downloads.php"><i class="fa-solid fa-download"></i> Downloads</a>
