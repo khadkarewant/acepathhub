@@ -239,7 +239,6 @@ foreach ($sets as $idx => $set) {
             <a href="practice-sets.php?purchased_id=<?= $purchased_id ?>&topic_id=<?= $topic_id ?>"
                class="btn-qs-sm">&larr; Back</a>
             <div id="pq-set-label" class="pq-set-label">Set <span id="pq-current">1</span> of <?= $total_sets ?></div>
-            <button id="report-btn" class="btn-reset-sm">Report</button>
         </div>
 
         <!-- Question container -->
@@ -368,8 +367,12 @@ function renderSet(index) {
             html += `<div class="pq-q-num">Q${qi + 1}</div>`;
         }
 
-        html += `<div class="pq-q-text">${q.question}</div>`;
+        html += `<div class="d-flex justify-content-between align-items-start mb-2">
+            <div class="pq-q-text">${q.question}</div>
+            <button class="btn-reset-sm report-btn ms-2" data-qid="${q.id}">Report</button>
+            </div>`;
         html += `<div class="pq-options">`;
+        
 
         ['A','B','C','D'].forEach(key => {
             const val       = q['option_' + key.toLowerCase()];
@@ -505,7 +508,10 @@ hammer.on('swipeleft',  () => animateSwipe(currentIndex + 1, 'left'));
 hammer.on('swiperight', () => animateSwipe(currentIndex - 1, 'right'));
 
 // Report
-$('#report-btn').on('click', function () {
+let reportQuestionId = null;
+
+$(document).on('click', '.report-btn', function () {
+    reportQuestionId = parseInt($(this).data('qid'));
     $('#reportText').val('');
     new bootstrap.Modal(document.getElementById('reportModal')).show();
 });
@@ -515,10 +521,10 @@ $('#submitReport').on('click', function () {
     if (!reason) { alert('Please describe the issue.'); return; }
 
     const csrf    = getCsrf();
-    const payload = { question_set_id: sets[currentIndex].id, reason: reason };
+    const payload = { question_id: reportQuestionId, reason: reason };
     if (csrf) payload[csrf.name] = csrf.value;
 
-    $.post('report-mcq.php', payload, function (res) {
+    $.post('question-report.php', payload, function (res) {
         if (res.status === 'ok') {
             alert('Reported. Thank you.');
             bootstrap.Modal.getInstance(document.getElementById('reportModal')).hide();

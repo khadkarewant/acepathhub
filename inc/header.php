@@ -112,7 +112,7 @@
                         <a href="unverified-mcqs.php"><i class="fa-solid fa-circle-exclamation"></i> Unverified MCQs</a>
                     </div>
                     <div class="side-sublinks">
-                        <a href="admin-mcq-reports.php"><i class="fa-solid fa-flag"></i> Reports</a>
+                        <a href="question-reports.php"><i class="fa-solid fa-flag"></i> Reports</a>
                     </div>
                 </div>
             </div>
