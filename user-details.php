@@ -50,6 +50,7 @@ if (!$row) {
 <div class="container-fluid">
 
     <div class="qs-list-header">
+        <a href="users.php" class="btn-qs-sm">← Back</a>
         <div class="qs-list-title">
             <?= htmlspecialchars(trim(
                 $row['first_name'] . ' ' .

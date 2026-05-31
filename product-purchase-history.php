@@ -17,17 +17,19 @@ if (has_role(ROLE_ADMIN)) {
 }
 
 // Fetch target user
-$stmt = $conn->prepare("
-    SELECT user_id, first_name, middle_name, last_name, username
-    FROM users
-    WHERE user_id = ? AND role = ?
-    LIMIT 1
-");
+$stmt = mysqli_prepare($conn,
+    "SELECT user_id, first_name, middle_name, last_name, username
+     FROM users
+     WHERE user_id = ? AND role = ?
+     LIMIT 1"
+);
 $role_student = ROLE_STUDENT;
-$stmt->bind_param("ii", $target_id, $role_student);
-$stmt->execute();
-$target = $stmt->get_result()->fetch_assoc();
-$stmt->close();
+mysqli_stmt_bind_param($stmt, 'ii', $target_id, $role_student);
+mysqli_stmt_execute($stmt);
+$res    = mysqli_stmt_get_result($stmt);
+$target = mysqli_fetch_assoc($res);
+mysqli_free_result($res);
+mysqli_stmt_close($stmt);
 
 if (!$target) {
     header("Location: users.php");
@@ -35,22 +37,24 @@ if (!$target) {
 }
 
 // Fetch purchase history — single JOIN, no N+1
-$stmt = $conn->prepare("
-    SELECT pp.id, pp.amount, pp.sets_remaining, pp.expires_at,
-           pp.txn_no, pp.txn_note, pp.txn_mode, pp.mobile,
-           pp.status, pp.purchased_on,
-           p.name AS product_name, p.product_type,
-           u.username AS created_by_username
-    FROM purchased_products pp
-    INNER JOIN products p ON p.id = pp.product_id
-    INNER JOIN users u ON u.user_id = pp.created_by
-    WHERE pp.user_id = ?
-    ORDER BY pp.purchased_on DESC, pp.id DESC
-");
-$stmt->bind_param("i", $target_id);
-$stmt->execute();
-$purchases = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-$stmt->close();
+$stmt = mysqli_prepare($conn,
+    "SELECT pp.id, pp.amount, pp.sets_remaining, pp.expires_at,
+            pp.txn_no, pp.txn_note, pp.txn_mode, pp.mobile,
+            pp.status, pp.purchased_on,
+            p.name AS product_name, p.product_type,
+            u.username AS created_by_username
+     FROM purchased_products pp
+     INNER JOIN products p ON p.id = pp.product_id
+     INNER JOIN users u ON u.user_id = pp.created_by
+     WHERE pp.user_id = ?
+     ORDER BY pp.purchased_on DESC, pp.id DESC"
+);
+mysqli_stmt_bind_param($stmt, 'i', $target_id);
+mysqli_stmt_execute($stmt);
+$res       = mysqli_stmt_get_result($stmt);
+$purchases = mysqli_fetch_all($res, MYSQLI_ASSOC);
+mysqli_free_result($res);
+mysqli_stmt_close($stmt);
 
 $target_name = trim(
     $target['first_name'] . ' ' .
@@ -71,13 +75,11 @@ $target_name = trim(
 
 <div class="container-fluid p-3">
 
-    <div class="mb-3 d-flex justify-content-between align-items-center">
+    <div class="mb-3">
         <?php if (has_role(ROLE_ADMIN)): ?>
-            <a href="user-details.php?user_id=<?= $target_id ?>" class="btn btn-sm btn-secondary">
-                &larr; Back to User
-            </a>
+            <a href="user-details.php?user_id=<?= $target_id ?>" class="btn-qs-sm">← Back</a>
         <?php else: ?>
-            <a href="home.php" class="btn btn-sm btn-secondary">&larr; Back</a>
+            <a href="product-mine.php" class="btn-qs-sm">← Back</a>
         <?php endif; ?>
     </div>
 
@@ -148,7 +150,7 @@ $target_name = trim(
                                     <?= csrf_input() ?>
                                     <input type="hidden" name="purchase_id" value="<?= $pp['id'] ?>">
                                     <input type="hidden" name="student_id" value="<?= $target_id ?>">
-                                    <button type="submit" class="btn btn-sm btn-danger">Cancel</button>
+                                    <button type="submit" class="btn-qs-danger">Cancel</button>
                                 </form>
                             <?php endif; ?>
                         </td>
