@@ -73,6 +73,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <div class="qs-list-header">
         <div class="qs-list-title">Edit Subject</div>
+    </div>
+    
+    <div class="mb-3">
         <a href="subject-list.php?exam_body_id=<?= $exam_body_id ?>" class="btn-qs-sm">← Back</a>
     </div>
 
