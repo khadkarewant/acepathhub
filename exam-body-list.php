@@ -29,7 +29,7 @@ mysqli_free_result($result);
     <div class="qs-list-header">
         <div class="qs-list-title">Exam Bodies</div>
         <?php if (has_role(ROLE_ADMIN)): ?>
-            <a href="exam-body-add.php" class="btn-qs-gold">+ Add Exam Body</a>
+            <a href="exam-body-add.php" class="btn btn-sm" style="background:var(--accent);color:#000;font-weight:600;">+ Add Exam Body</a>
         <?php endif; ?>
     </div>
 
