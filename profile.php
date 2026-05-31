@@ -18,6 +18,15 @@ $u = $user; // session.php sets $user array
 
 <div class="container py-4">
 
+    <?php if (isset($_GET['updated'])): ?>
+        <div class="alert alert-success mb-3">Profile updated successfully.</div>
+    <?php elseif (isset($_GET['err'])): ?>
+        <div class="alert alert-danger mb-3">
+            <?= $_GET['err'] === 'server' ? 'Server error. Try again.' : 'Update failed. Try again.' ?>
+        </div>
+    <?php endif; ?>
+
+
     <!-- Avatar + Name -->
     <div class="profile-hero">
         <div class="profile-avatar">
@@ -36,6 +45,7 @@ $u = $user; // session.php sets $user array
 
     <!-- Action Buttons -->
     <div class="profile-actions">
+        <a href="profile-edit.php" class="btn-qs-gold">Edit Profile</a>
         <a href="change-password.php" class="btn-qs-sm">Change Password</a>
         <?php if (empty($u['pin'])): ?>
             <a href="set-pin.php" class="btn-qs-sm">Set PIN</a>
@@ -73,7 +83,7 @@ $u = $user; // session.php sets $user array
                 <span><?= $u['gender'] ? htmlspecialchars($u['gender'], ENT_QUOTES, 'UTF-8') : '—' ?></span>
             </div>
             <div class="profile-card-footer">
-                <a href="update-personal-info.php" class="btn-qs-sm">Update</a>
+                <a href="profile-edit.php" class="btn-qs-sm">Update</a>
             </div>
         </div>
 
@@ -89,7 +99,7 @@ $u = $user; // session.php sets $user array
                 <span><?= htmlspecialchars($u['email'], ENT_QUOTES, 'UTF-8') ?></span>
             </div>
             <div class="profile-card-footer">
-                <a href="update-contact.php" class="btn-qs-sm">Update</a>
+                <a href="profile-edit.php" class="btn-qs-sm">Update</a>
             </div>
         </div>
 
@@ -109,7 +119,7 @@ $u = $user; // session.php sets $user array
                 <span><?= $u['postal_code'] ? htmlspecialchars($u['postal_code'], ENT_QUOTES, 'UTF-8') : '—' ?></span>
             </div>
             <div class="profile-card-footer">
-                <a href="update-address.php" class="btn-qs-sm">Update</a>
+                <a href="profile-edit.php" class="btn-qs-sm">Update</a>
             </div>
         </div>
 
