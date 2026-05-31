@@ -48,8 +48,8 @@ if (has_role(ROLE_ADMIN)) {
 
 <?php if (has_role(ROLE_ADMIN)): ?>
 
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h4 class="mb-0">Products</h4>
+    <div class="qs-list-header">
+        <div class="qs-list-title">Products</div>
         <a href="product-add.php" class="btn btn-sm" style="background:var(--accent);color:#000;">Add Product</a>
     </div>
 
