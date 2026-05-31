@@ -23,24 +23,40 @@ if ($selected_eb_id === 0 && !empty($exam_bodies)) {
 }
 
 // 2. Topics with verified+draft sets
-$topics = [];
+$subjects = [];
 if ($active_tab === 'practice') {
     $stmt = mysqli_prepare($conn,
-        'SELECT t.id AS topic_id, t.name AS topic_name,
+        'SELECT s.id AS subject_id, s.name AS subject_name,
+                t.id AS topic_id, t.name AS topic_name,
                 COUNT(qs.id) AS draft_count
-         FROM topics t
-         JOIN subjects s       ON s.id  = t.subject_id
+         FROM subjects s
+         JOIN topics t         ON t.subject_id = s.id
          JOIN exam_bodies eb   ON eb.id = s.exam_body_id
          JOIN question_sets qs ON qs.topic_id = t.id
          WHERE eb.id = ? AND qs.verified = 1 AND qs.status = \'draft\'
-         GROUP BY t.id
-         ORDER BY t.id ASC');
+         GROUP BY s.id, t.id
+         ORDER BY s.name ASC, t.name ASC');
     mysqli_stmt_bind_param($stmt, 'i', $selected_eb_id);
     mysqli_stmt_execute($stmt);
-    $res    = mysqli_stmt_get_result($stmt);
-    $topics = mysqli_fetch_all($res, MYSQLI_ASSOC);
+    $res  = mysqli_stmt_get_result($stmt);
+    $rows = mysqli_fetch_all($res, MYSQLI_ASSOC);
     mysqli_free_result($res);
     mysqli_stmt_close($stmt);
+
+    foreach ($rows as $row) {
+        $sid = $row['subject_id'];
+        if (!isset($subjects[$sid])) {
+            $subjects[$sid] = [
+                'subject_name' => $row['subject_name'],
+                'topics'       => [],
+            ];
+        }
+        $subjects[$sid]['topics'][] = [
+            'topic_id'   => $row['topic_id'],
+            'topic_name' => $row['topic_name'],
+            'draft_count' => $row['draft_count'],
+        ];
+    }
 }
 
 // 3. Past papers with draft count
@@ -108,15 +124,20 @@ if ($active_tab === 'past_paper') {
 
     <?php if ($active_tab === 'practice'): ?>
 
-        <?php if (empty($topics)): ?>
+        <?php if (empty($subjects)): ?>
             <div class="qs-empty">No verified question sets for this exam body.</div>
         <?php else: ?>
-            <?php foreach ($topics as $t): ?>
-            <div class="uv-topic-row"
-                 onclick="window.location.href='draft-mcq-details.php?topic_id=<?= $t['topic_id'] ?>'">
-                <span class="uv-topic-name"><?= htmlspecialchars($t['topic_name']) ?></span>
-                <span class="uv-topic-count"><?= $t['draft_count'] ?> draft<?= $t['draft_count'] !== 1 ? 's' : '' ?></span>
-            </div>
+            <?php foreach ($subjects as $subject): ?>
+                <div class="uv-subject-header">
+                    <?= htmlspecialchars($subject['subject_name']) ?>
+                </div>
+                <?php foreach ($subject['topics'] as $t): ?>
+                    <div class="uv-topic-row"
+                        onclick="window.location.href='draft-mcq-list.php?topic_id=<?= $t['topic_id'] ?>'">
+                        <span class="uv-topic-name"><?= htmlspecialchars($t['topic_name']) ?></span>
+                        <span class="uv-topic-count"><?= $t['draft_count'] ?> draft<?= $t['draft_count'] !== 1 ? 's' : '' ?></span>
+                    </div>
+                <?php endforeach; ?>
             <?php endforeach; ?>
         <?php endif; ?>
 
@@ -127,7 +148,7 @@ if ($active_tab === 'past_paper') {
         <?php else: ?>
             <?php foreach ($past_papers as $pp): ?>
             <div class="uv-topic-row"
-                 onclick="window.location.href='draft-mcq-details.php?past_paper_id=<?= $pp['past_paper_id'] ?>'">
+                 onclick="window.location.href='draft-mcq-list.php?past_paper_id=<?= $pp['past_paper_id'] ?>'">
                 <span class="uv-topic-name">
                     <?= htmlspecialchars($pp['subject_name']) ?> — <?= (int)$pp['year'] ?>
                 </span>
