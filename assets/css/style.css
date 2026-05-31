@@ -1278,31 +1278,20 @@ label { font-weight: 700; }
 }
 
 /* ── Dark Table ───────────────────────────────────────── */
-.table {
-    color: var(--text);
-    border-color: var(--border);
+.table > :not(caption) > * > * {
+    background-color: var(--card-bg) !important;
+    color: var(--text) !important;
+    border-color: var(--border) !important;
 }
 
 .table thead th {
-    background: var(--sidebar-bg);
-    color: var(--accent);
-    border-color: var(--border);
+    background: var(--sidebar-bg) !important;
+    color: var(--accent) !important;
     font-size: 0.82rem;
     text-transform: uppercase;
     letter-spacing: 0.05em;
 }
 
-.table tbody tr {
-    background: var(--card-bg) !important;
-    border-color: var(--border) !important;
-}
-
-.table tbody tr:hover {
-    background: rgba(240, 192, 64, 0.06) !important;
-    color: var(--text) !important;
-}
-
-.table td, .table th {
-    border-color: var(--border) !important;
-    color: var(--text) !important;
+.table tbody tr:hover > * {
+    background-color: rgba(240, 192, 64, 0.06) !important;
 }
