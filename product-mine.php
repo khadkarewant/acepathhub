@@ -182,7 +182,7 @@ mysqli_stmt_close($stmt);
                         </div>
                         <div class="mp-meta mt-1">Purchased: <?= date('d M Y', strtotime($row['purchased_on'])) ?></div>
                         <div class="mt-auto pt-3">
-                            <a href="practice.php?purchased_id=<?= $row['id'] ?>"
+                            <a href="practice-subject.php?purchased_id=<?= $row['id'] ?>"
                                class="btn-qs-gold d-block text-center">Start Practice</a>
                         </div>
                     </div>

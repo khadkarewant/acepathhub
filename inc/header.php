@@ -112,7 +112,7 @@
                         <a href="unverified-mcqs.php"><i class="fa-solid fa-circle-exclamation"></i> Unverified MCQs</a>
                     </div>
                     <div class="side-sublinks">
-                        <a href="admin-mcq-reports.php"><i class="fa-solid fa-flag"></i> Reports</a>
+                        <a href="question-reports.php"><i class="fa-solid fa-flag"></i> Reports</a>
                     </div>
                 </div>
             </div>
@@ -161,9 +161,6 @@
             </div>
             <div class="side-links">
                 <a href="product-mine.php"><i class="fa-solid fa-star"></i> My Products</a>
-            </div>
-            <div class="side-links">
-                <a href="course.php"><i class="fa-solid fa-graduation-cap"></i> Full Course</a>
             </div>
             <div class="side-links">
                 <a href="downloads.php"><i class="fa-solid fa-download"></i> Downloads</a>
