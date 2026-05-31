@@ -33,11 +33,10 @@ mysqli_stmt_close($stmt);
 <body>
 <?php include 'inc/header.php'; ?>
 
-<div class="container-fluid">
-
+<div class="container-fluid p-3">
     <div class="qs-list-header">
         <div class="qs-list-title">Users</div>
-        <a href="add-user.php" class="btn-qs-gold">Add User</a>
+        <a href="user-add.php" class="btn btn-sm" style="background:var(--accent);color:#000;">Add User</a>
     </div>
 
     <div class="table-responsive">
