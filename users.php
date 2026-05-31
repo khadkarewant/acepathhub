@@ -15,7 +15,7 @@ $stmt = mysqli_prepare($conn,
     'SELECT user_id, first_name, middle_name, last_name,
             username, role, phone, status, is_blocked
      FROM users
-     ORDER BY user_id DESC');
+     ORDER BY user_id ASC');
 mysqli_stmt_execute($stmt);
 $res   = mysqli_stmt_get_result($stmt);
 $users = mysqli_fetch_all($res, MYSQLI_ASSOC);
