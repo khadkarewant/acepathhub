@@ -66,7 +66,7 @@ $stmt = mysqli_prepare($conn,
      LEFT JOIN questions q ON q.question_set_id = qs.id
      WHERE {$where} AND qs.verified = 1 AND qs.status = 'draft'
      GROUP BY qs.id
-     ORDER BY qs.id DESC");
+     ORDER BY qs.id ASC");
 mysqli_stmt_bind_param($stmt, 'i', $bind_id);
 mysqli_stmt_execute($stmt);
 $res  = mysqli_stmt_get_result($stmt);
@@ -136,7 +136,7 @@ if (!empty($sets)) {
         <div class="qs-empty">No verified question sets for this <?= $past_paper ? 'past paper' : 'topic' ?>.</div>
     <?php else: ?>
 
-        <?php foreach ($sets as $set):
+        <?php $sn = 1; foreach ($sets as $set):
             $fq   = $first_questions[$set['id']] ?? null;
             $ans  = $fq ? strtolower(trim($fq['answer'])) : null;
             $more = (int)$set['total_questions'] - 1;
@@ -144,7 +144,7 @@ if (!empty($sets)) {
         <div class="qs-card">
 
             <div class="qs-card-head">
-                <span class="qs-card-id">#<?= $set['id'] ?></span>
+                <span class="qs-card-id"><?= $sn++ ?>. #<?= $set['id'] ?></span>
                 <?php if ($past_paper && $set['question_no']): ?>
                     <span class="badge badge-meta">Q<?= (int)$set['question_no'] ?></span>
                 <?php endif; ?>

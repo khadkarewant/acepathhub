@@ -75,7 +75,7 @@ if (has_role(ROLE_DATA_ENTRY)) {
     $sql .= ' AND qs.created_by = ?';
 }
 
-$sql .= ' GROUP BY qs.id ORDER BY qs.id DESC';
+$sql .= ' GROUP BY qs.id ORDER BY qs.id ASC';
 
 $stmt = mysqli_prepare($conn, $sql);
 
@@ -156,7 +156,7 @@ if (!empty($sets)) {
         <div class="qs-empty">No unverified question sets for this <?= $past_paper ? 'past paper' : 'topic' ?>.</div>
     <?php else: ?>
 
-        <?php foreach ($sets as $set):
+        <?php $sn = 1; foreach ($sets as $set):
             $fq   = $first_questions[$set['id']] ?? null;
             $ans  = $fq ? strtolower(trim($fq['answer'])) : null;
             $more = (int)$set['total_questions'] - 1;
@@ -164,7 +164,7 @@ if (!empty($sets)) {
         <div class="qs-card">
 
             <div class="qs-card-head">
-                <span class="qs-card-id">#<?= $set['id'] ?></span>
+                <span class="qs-card-id"><?= $sn++ ?>. #<?= $set['id'] ?></span>
                 <?php if ($past_paper && $set['question_no']): ?>
                     <span class="badge badge-meta">Q<?= (int)$set['question_no'] ?></span>
                 <?php endif; ?>
