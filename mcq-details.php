@@ -112,6 +112,7 @@ mysqli_stmt_close($stmt);
         </div>
 
         <div class="mcqd-actions">
+                <a href="question-set-update.php?question_set_id=<?= $question_set_id ?>" class="btn-qs-sm">Update Set</a>
             <?php if ($set['verified'] == 0): ?>
                 <form method="POST" action="mcq-verify.php">
                     <?= csrf_input() ?>
@@ -191,6 +192,7 @@ mysqli_stmt_close($stmt);
             <div class="mcqd-q-head">
                 <span class="qs-q-num">Q<?= $i + 1 ?></span>
                 <span class="mcqd-q-id">#<?= $q['id'] ?></span>
+                    <a href="question-edit.php?question_id=<?= $q['id'] ?>&question_set_id=<?= $question_set_id ?>" class="btn-qs-sm ms-auto">Edit</a>
             </div>
             <div class="mcqd-q-body">
                 <div class="mcqd-q-text"><?= htmlspecialchars($q['question']) ?></div>
