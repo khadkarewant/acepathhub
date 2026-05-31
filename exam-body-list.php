@@ -45,7 +45,7 @@ mysqli_free_result($result);
         <div class="alert alert-danger">Delete failed. Please try again.</div>
     <?php endif; ?>
 
-    <table class="table table-bordered table-hover">
+    <table class="table table-hover" id="datatable">
         <thead>
             <tr>
                 <th>S.N</th>
