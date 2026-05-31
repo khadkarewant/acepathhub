@@ -1293,15 +1293,16 @@ label { font-weight: 700; }
 }
 
 .table tbody tr {
-    background: var(--card-bg);
-    border-color: var(--border);
+    background: var(--card-bg) !important;
+    border-color: var(--border) !important;
 }
 
 .table tbody tr:hover {
-    background: rgba(240, 192, 64, 0.06);
-    color: var(--text);
+    background: rgba(240, 192, 64, 0.06) !important;
+    color: var(--text) !important;
 }
 
 .table td, .table th {
-    border-color: var(--border);
+    border-color: var(--border) !important;
+    color: var(--text) !important;
 }
