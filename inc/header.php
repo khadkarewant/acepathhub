@@ -56,48 +56,21 @@
         <?php if (has_role(ROLE_ADMIN)): ?>
 
             <div class="side-links">
-                <a href="javascript:void(0)" class="menu-toggle">
-                    <i class="fa-solid fa-users"></i> Users &triangledown;
+                <a href="users.php">
+                    <i class="fa-solid fa-users"></i> Users
                 </a>
-                <div class="side-submenu">
-                    <div class="side-sublinks">
-                        <a href="users.php"><i class="fa-solid fa-users"></i> User List</a>
-                    </div>
-                    <div class="side-sublinks">
-                        <a href="add-user.php"><i class="fa-solid fa-user-plus"></i> Add User</a>
-                    </div>
-                </div>
             </div>
 
             <div class="side-links">
-                <a href="javascript:void(0)" class="menu-toggle">
-                    <i class="fa-solid fa-building-columns"></i> Exam Bodies &triangledown;
+                <a href="exam-body-list.php">
+                    <i class="fa-solid fa-building-columns"></i> Exam Bodies
                 </a>
-                <div class="side-submenu">
-                    <div class="side-sublinks">
-                        <a href="exam-body-list.php"><i class="fa-solid fa-list"></i> Exam Body List</a>
-                    </div>
-                    <div class="side-sublinks">
-                        <a href="exam-body-add.php"><i class="fa-solid fa-plus"></i> Add Exam Body</a>
-                    </div>
-                </div>
             </div>
 
-            <div class="side-links">
-                <a href="javascript:void(0)" class="menu-toggle">
-                    <i class="fa-solid fa-box"></i> Products &triangledown;
+           <div class="side-links">
+                <a href="products.php">
+                    <i class="fa-solid fa-box"></i> Products
                 </a>
-                <div class="side-submenu">
-                    <div class="side-sublinks">
-                        <a href="products.php"><i class="fa-solid fa-box"></i> Product List</a>
-                    </div>
-                    <div class="side-sublinks">
-                        <a href="add-product.php"><i class="fa-solid fa-plus"></i> Add Product</a>
-                    </div>
-                    <div class="side-sublinks">
-                        <a href="assign-product.php"><i class="fa-solid fa-hand-holding-box"></i> Assign Product</a>
-                    </div>
-                </div>
             </div>
 
             <div class="side-links">
