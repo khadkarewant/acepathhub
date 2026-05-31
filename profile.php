@@ -82,9 +82,6 @@ $u = $user; // session.php sets $user array
                 <span class="profile-label">Gender</span>
                 <span><?= $u['gender'] ? htmlspecialchars($u['gender'], ENT_QUOTES, 'UTF-8') : '—' ?></span>
             </div>
-            <div class="profile-card-footer">
-                <a href="profile-edit.php" class="btn-qs-sm">Update</a>
-            </div>
         </div>
 
         <!-- Contact -->
@@ -97,9 +94,6 @@ $u = $user; // session.php sets $user array
             <div class="profile-card-row">
                 <span class="profile-label">Email</span>
                 <span><?= htmlspecialchars($u['email'], ENT_QUOTES, 'UTF-8') ?></span>
-            </div>
-            <div class="profile-card-footer">
-                <a href="profile-edit.php" class="btn-qs-sm">Update</a>
             </div>
         </div>
 
@@ -117,9 +111,6 @@ $u = $user; // session.php sets $user array
             <div class="profile-card-row">
                 <span class="profile-label">Postal Code</span>
                 <span><?= $u['postal_code'] ? htmlspecialchars($u['postal_code'], ENT_QUOTES, 'UTF-8') : '—' ?></span>
-            </div>
-            <div class="profile-card-footer">
-                <a href="profile-edit.php" class="btn-qs-sm">Update</a>
             </div>
         </div>
 
