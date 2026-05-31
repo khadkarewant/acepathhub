@@ -1,16 +1,9 @@
 <?php
 require_once "src/db/db_conn.php";
 require_once "src/db/session.php";
-require_once "src/db/privileges.php";
+require_role(ROLE_ADMIN, ROLE_STUDENT, ROLE_DATA_ENTRY);
 
-if (!isset($user_id) || !is_numeric($user_id)) {
-    header("Location: login.php");
-    exit;
-}
-
-function e($s): string {
-    return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
-}
+$u = $user; // session.php sets $user array
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -18,108 +11,137 @@ function e($s): string {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Profile</title>
-    <?php include("src/inc/links.php"); ?>
-    <style>
-        .profile_img{
-            width:80px;
-            height:100px;
-            border-radius:50%;
-        }
-    </style>
+    <?php include "inc/links.php"; ?>
 </head>
 <body>
-<?php include("src/inc/header.php"); ?>
+<?php include "inc/header.php"; ?>
 
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-md-12">
-            <img src="src/img/full_logo_wb.png" alt="profile image" class="profile_img"> <br>
+<div class="container py-4">
 
-            <strong><?= e(($first_name ?? '') . " " . ($middle_name ?? '') . " " . ($last_name ?? '')) ?></strong>
-            <br>
-            <i>@<?= e($username ?? '') ?></i>
-            <br><br>
-
-            <button class="btn" style="background: var(--primary); color:white;"
-                    onclick="window.location.href='change-password.php'">
-                Change Password
-            </button>
-
-            <?php if (empty($pin)): ?>
-                <button class="btn" style="background: var(--primary); color:white"
-                        onclick="window.location.href='set-pin.php'">
-                    Set Pin
-                </button>
-            <?php else: ?>
-                <button class="btn" style="background: var(--primary); color:white"
-                        onclick="window.location.href='change-pin.php'">
-                    Change Pin
-                </button>
-            <?php endif; ?>
-
-            <div class="sharing_code">
-                <br>
-                <p>
-                    Share & get free MCQ set. <br>
-                    <strong>Your link:</strong>
-                    <?php
-                        // Build a safe referral link (only if you want to actually show it)
-                        $ref = $referral_code ?? '';
-                        $share_link = "https://quizmania.org/signup.php?referral_by=" . rawurlencode((string)$ref);
-                    ?>
-                    <input type="text" value="<?= e($share_link) ?>" class="form-control" readonly>
-                </p>
+    <!-- Avatar + Name -->
+    <div class="profile-hero">
+        <div class="profile-avatar">
+            <?= strtoupper(substr($u['first_name'], 0, 1) . substr($u['last_name'], 0, 1)) ?>
+        </div>
+        <div class="profile-hero-info">
+            <div class="profile-fullname">
+                <?= htmlspecialchars(trim($u['first_name'] . ' ' . ($u['middle_name'] ? $u['middle_name'] . ' ' : '') . $u['last_name']), ENT_QUOTES, 'UTF-8') ?>
             </div>
-
-            <div class="row">
-                <div class="col-md-4">
-                    <div style="font-size:18px;font-weight:700">Personal Details:</div>
-                    <p>
-                        First Name: <?= e($first_name ?? '') ?> <br>
-                        <?php if (!empty($middle_name)): ?>
-                            Middle Name: <?= e($middle_name) ?> <br>
-                        <?php endif; ?>
-                        Last Name: <?= e($last_name ?? '') ?> <br>
-                        DOB: <?= e($dob ?? '') ?> <br>
-                        Gender: <?= e($gender ?? '') ?><br>
-
-                        <button class="btn" style="background:var(--primary);color:white;"
-                                onclick="window.location.href='update-personal-info.php'">
-                            Update
-                        </button>
-                    </p>
-                </div>
-
-                <div class="col-md-4">
-                    <div style="font-size:18px;font-weight:700">Contact Details:</div>
-                    <p>
-                        Mobile No.: <?= e($phone ?? '') ?> <br>
-                        Email: <?= e($email ?? '') ?><br>
-                        <button class="btn" style="background:var(--primary);color:white;"
-                                onclick="window.location.href='update-contact.php'">
-                            Update
-                        </button>
-                    </p>
-                </div>
-
-                <div class="col-md-4">
-                    <div style="font-size:18px;font-weight:700">Address:</div>
-                    <p>
-                        Country: <?= e($country ?? '') ?> <br>
-                        City: <?= e($city ?? '') ?> <br>
-                        Postal Code: <?= e($postal_code ?? '') ?> <br>
-                        <button class="btn" style="background:var(--primary);color:white;"
-                                onclick="window.location.href='update-address.php'">
-                            Update
-                        </button>
-                    </p>
-                </div>
+            <div class="profile-username">@<?= htmlspecialchars($u['username'], ENT_QUOTES, 'UTF-8') ?></div>
+            <div class="profile-role-badge">
+                <?= $role === ROLE_ADMIN ? 'Admin' : ($role === ROLE_DATA_ENTRY ? 'Data Entry' : 'Student') ?>
             </div>
-
         </div>
     </div>
+
+    <!-- Action Buttons -->
+    <div class="profile-actions">
+        <a href="change-password.php" class="btn-qs-sm">Change Password</a>
+        <?php if (empty($u['pin'])): ?>
+            <a href="set-pin.php" class="btn-qs-sm">Set PIN</a>
+        <?php else: ?>
+            <a href="change-pin.php" class="btn-qs-sm">Change PIN</a>
+        <?php endif; ?>
+    </div>
+
+    <!-- Info Cards -->
+    <div class="profile-cards">
+
+        <!-- Personal -->
+        <div class="profile-card">
+            <div class="profile-card-title">Personal Details</div>
+            <div class="profile-card-row">
+                <span class="profile-label">First Name</span>
+                <span><?= htmlspecialchars($u['first_name'], ENT_QUOTES, 'UTF-8') ?></span>
+            </div>
+            <?php if (!empty($u['middle_name'])): ?>
+            <div class="profile-card-row">
+                <span class="profile-label">Middle Name</span>
+                <span><?= htmlspecialchars($u['middle_name'], ENT_QUOTES, 'UTF-8') ?></span>
+            </div>
+            <?php endif; ?>
+            <div class="profile-card-row">
+                <span class="profile-label">Last Name</span>
+                <span><?= htmlspecialchars($u['last_name'], ENT_QUOTES, 'UTF-8') ?></span>
+            </div>
+            <div class="profile-card-row">
+                <span class="profile-label">Date of Birth</span>
+                <span><?= $u['dob'] ? htmlspecialchars($u['dob'], ENT_QUOTES, 'UTF-8') : '—' ?></span>
+            </div>
+            <div class="profile-card-row">
+                <span class="profile-label">Gender</span>
+                <span><?= $u['gender'] ? htmlspecialchars($u['gender'], ENT_QUOTES, 'UTF-8') : '—' ?></span>
+            </div>
+            <div class="profile-card-footer">
+                <a href="update-personal-info.php" class="btn-qs-sm">Update</a>
+            </div>
+        </div>
+
+        <!-- Contact -->
+        <div class="profile-card">
+            <div class="profile-card-title">Contact Details</div>
+            <div class="profile-card-row">
+                <span class="profile-label">Mobile</span>
+                <span><?= htmlspecialchars($u['phone'], ENT_QUOTES, 'UTF-8') ?></span>
+            </div>
+            <div class="profile-card-row">
+                <span class="profile-label">Email</span>
+                <span><?= htmlspecialchars($u['email'], ENT_QUOTES, 'UTF-8') ?></span>
+            </div>
+            <div class="profile-card-footer">
+                <a href="update-contact.php" class="btn-qs-sm">Update</a>
+            </div>
+        </div>
+
+        <!-- Address -->
+        <div class="profile-card">
+            <div class="profile-card-title">Address</div>
+            <div class="profile-card-row">
+                <span class="profile-label">Country</span>
+                <span><?= $u['country'] ? htmlspecialchars($u['country'], ENT_QUOTES, 'UTF-8') : '—' ?></span>
+            </div>
+            <div class="profile-card-row">
+                <span class="profile-label">City</span>
+                <span><?= $u['city'] ? htmlspecialchars($u['city'], ENT_QUOTES, 'UTF-8') : '—' ?></span>
+            </div>
+            <div class="profile-card-row">
+                <span class="profile-label">Postal Code</span>
+                <span><?= $u['postal_code'] ? htmlspecialchars($u['postal_code'], ENT_QUOTES, 'UTF-8') : '—' ?></span>
+            </div>
+            <div class="profile-card-footer">
+                <a href="update-address.php" class="btn-qs-sm">Update</a>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Referral -->
+    <div class="profile-referral">
+        <div class="profile-card-title">Referral Link</div>
+        <p class="profile-referral-hint">Share your link and earn free MCQ sets.</p>
+        <?php
+            $share_link = 'https://acepathhub.com/signup.php?referral_by=' . rawurlencode((string)($u['referral_code'] ?? ''));
+        ?>
+        <div class="profile-referral-row">
+            <input type="text" id="referral-input" value="<?= htmlspecialchars($share_link, ENT_QUOTES, 'UTF-8') ?>"
+                   class="form-control profile-referral-input" readonly>
+            <button class="btn-qs-sm" onclick="copyReferral()">Copy</button>
+        </div>
+    </div>
+
 </div>
 
-<?php include("src/inc/footer.php"); ?>
+<script>
+function copyReferral() {
+    const input = document.getElementById('referral-input');
+    input.select();
+    input.setSelectionRange(0, 99999);
+    navigator.clipboard.writeText(input.value).catch(() => {
+        document.execCommand('copy');
+    });
+}
+</script>
+
+<?php include "inc/footer.php"; ?>
 </body>
 </html>

@@ -192,6 +192,7 @@ CREATE TABLE IF NOT EXISTS `past_papers` (
 CREATE TABLE IF NOT EXISTS `question_sets` (
   `id`            INT UNSIGNED                  NOT NULL AUTO_INCREMENT,
   `topic_id`      INT UNSIGNED                  DEFAULT NULL,
+  `subset_no`     TINYINT UNSIGNED              DEFAULT NULL,
   `image_path`    VARCHAR(255)                  DEFAULT NULL,
   `passage_text`  TEXT                          DEFAULT NULL,
   `source`        ENUM('practice','past_paper') NOT NULL DEFAULT 'practice',
@@ -449,27 +450,31 @@ CREATE TABLE IF NOT EXISTS `exam_attempt_sets` (
 -- One row per question_set per user — upsert on re-answer.
 -- ----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `practice_answers` (
-  `id`              INT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `user_id`         INT(11)      NOT NULL,
-  `question_set_id` INT UNSIGNED NOT NULL,
-  `selected_option` CHAR(1)      NOT NULL,
-  `answered_at`     DATETIME     NOT NULL,
- 
-  PRIMARY KEY (`id`),
-  INDEX `idx_pa_user_set` (`user_id`, `question_set_id`),
- 
-  CONSTRAINT `fk_pa_user`
-    FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`)
-    ON DELETE CASCADE ON UPDATE CASCADE,
- 
-  CONSTRAINT `fk_pa_set`
-    FOREIGN KEY (`question_set_id`) REFERENCES `question_sets` (`id`)
-    ON DELETE CASCADE ON UPDATE CASCADE,
- 
-  CONSTRAINT `chk_pa_option`
-    CHECK (`selected_option` IN ('A','B','C','D'))
- 
+    id              INT UNSIGNED  NOT NULL AUTO_INCREMENT,
+    user_id         INT(11)       NOT NULL,
+    purchased_id    INT UNSIGNED  NOT NULL,
+    question_set_id INT UNSIGNED  NOT NULL,
+    question_id     INT UNSIGNED  NOT NULL,
+    selected_option CHAR(1)       NOT NULL,
+    is_correct      TINYINT(1)    NOT NULL DEFAULT 0,
+    answered_at     TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_pa (user_id, purchased_id, question_id),
+    INDEX idx_pa_user_purchase (user_id, purchased_id),
+    INDEX idx_pa_qs (question_set_id),
+    CONSTRAINT fk_pa_user
+        FOREIGN KEY (user_id) REFERENCES users (user_id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT fk_pa_purchase
+        FOREIGN KEY (purchased_id) REFERENCES purchased_products (id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT fk_pa_question
+        FOREIGN KEY (question_id) REFERENCES questions (id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT chk_pa_option
+        CHECK (selected_option IN ('A','B','C','D'))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- ============================================================================
 -- DAY 5 — add tables here
 -- ============================================================================
@@ -481,7 +486,7 @@ CREATE TABLE IF NOT EXISTS `purchased_products` (
   `sets_remaining` TINYINT UNSIGNED NOT NULL DEFAULT 0,
   `expires_at`     DATE             DEFAULT NULL,
   `txn_no`         VARCHAR(64)      DEFAULT NULL,
-  `txn_mode`       ENUM('esewa','khalti','bank','free') NOT NULL DEFAULT 'free',
+  `txn_mode`       ENUM('bank','free','other') NOT NULL DEFAULT 'free',
   `mobile`         VARCHAR(15)      DEFAULT NULL,
   `status`         ENUM('active','cancelled') NOT NULL DEFAULT 'active',
   `purchased_on`   DATE             NOT NULL,
@@ -500,7 +505,23 @@ CREATE TABLE IF NOT EXISTS `purchased_products` (
 -- ============================================================================
 -- DAY 6 — add tables here
 -- ============================================================================
-
+CREATE TABLE IF NOT EXISTS `question_reports` (
+    `id`          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `user_id`     INT(11)      NOT NULL,
+    `question_id` INT UNSIGNED NOT NULL,
+    `reason`      TEXT         NOT NULL,
+    `status`      ENUM('pending','resolved','dismissed') NOT NULL DEFAULT 'pending',
+    `created_at`  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_qr_user_question` (`user_id`, `question_id`),
+    INDEX `idx_qr_question` (`question_id`),
+    CONSTRAINT `fk_qr_user`
+        FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT `fk_qr_question`
+        FOREIGN KEY (`question_id`) REFERENCES `questions` (`id`)
+        ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 -- ============================================================================
 -- DAY 7 — add tables here
 -- ============================================================================
