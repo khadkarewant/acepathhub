@@ -482,8 +482,11 @@ $(document).on('change', '.pq-answer', function () {
 
         if (res.explanation && res.explanation.trim() !== '') {
             $block.find('.pq-explanation')
-                  .removeClass('pq-no-explanation')
-                  .html('<strong>Explanation:</strong> ' + res.explanation);
+                .removeClass('pq-no-explanation')
+                .show()
+                .html('<strong>Explanation:</strong> ' + res.explanation);
+        } else {
+            $block.find('.pq-explanation').hide();
         }
 
         updatePalette();
