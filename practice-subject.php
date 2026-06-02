@@ -140,8 +140,8 @@ $exp_cls  = $days <= 7 ? 'mp-expires-warn' : 'mp-expires-ok';
 $product_id = (int)$purchase['product_id'];
 
 $rank_stmt = mysqli_prepare($conn,
-    "SELECT user_id, SUM(is_correct = 1) AS correct,
-            ROUND((SUM(is_correct = 1) / COUNT(id)) * 100, 2) AS accuracy
+    "SELECT pa.user_id, SUM(is_correct = 1) AS correct,
+            ROUND((SUM(is_correct = 1) / COUNT(pa.id)) * 100, 2) AS accuracy
      FROM practice_answers pa
      JOIN purchased_products pp ON pp.user_id = pa.user_id AND pp.product_id = ?
      WHERE pp.status = 'active'
