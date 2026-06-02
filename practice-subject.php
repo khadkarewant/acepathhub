@@ -135,6 +135,36 @@ $today    = new DateTime('today');
 $expiry   = new DateTime($purchase['expires_at']);
 $days     = (int)$today->diff($expiry)->days;
 $exp_cls  = $days <= 7 ? 'mp-expires-warn' : 'mp-expires-ok';
+
+// ── Overall rank for this product ─────────────────────────────────────────
+$product_id = (int)$purchase['product_id'];
+
+$rank_stmt = mysqli_prepare($conn,
+    "SELECT user_id, SUM(is_correct = 1) AS correct,
+            ROUND((SUM(is_correct = 1) / COUNT(id)) * 100, 2) AS accuracy
+     FROM practice_answers pa
+     JOIN purchased_products pp ON pp.user_id = pa.user_id AND pp.product_id = ?
+     WHERE pp.status = 'active'
+     GROUP BY user_id
+     ORDER BY correct DESC, accuracy DESC"
+);
+mysqli_stmt_bind_param($rank_stmt, 'i', $product_id);
+mysqli_stmt_execute($rank_stmt);
+$rank_res  = mysqli_stmt_get_result($rank_stmt);
+$rank_rows = mysqli_fetch_all($rank_res, MYSQLI_ASSOC);
+mysqli_free_result($rank_res);
+mysqli_stmt_close($rank_stmt);
+
+$my_rank       = 0;
+$total_rankers = count($rank_rows);
+foreach ($rank_rows as $idx => $rr) {
+    if ((int)$rr['user_id'] === $user_id) {
+        $my_rank = $idx + 1;
+        break;
+    }
+}
+
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -181,6 +211,23 @@ $exp_cls  = $days <= 7 ? 'mp-expires-warn' : 'mp-expires-ok';
                 <div class="ps-stat-num"><?= $overall_progress ?>%</div>
                 <div class="ps-stat-lbl">Progress</div>
             </div>
+
+            <?php if ($my_rank > 0): ?>
+            <div class="ps-stat-item">
+                <div class="ps-stat-num">
+                    <?php
+                    if ($my_rank === 1) echo '🏆';
+                    elseif ($my_rank === 2) echo '🥈';
+                    elseif ($my_rank === 3) echo '🥉';
+                    ?>
+                    <span class="lb-rank-badge lb-rank-<?= $my_rank <= 3 ? $my_rank : ($my_rank <= 10 ? 'top10' : 'default') ?>">
+                        #<?= $my_rank ?>
+                    </span>
+                </div>
+                <div class="ps-stat-lbl">Your Rank</div>
+            </div>
+            <?php endif; ?>
+
         </div>
         <div class="ps-progress-wrap mt-2">
             <div class="ps-progress-fill" style="width:<?= $overall_progress ?>%"></div>
@@ -218,8 +265,12 @@ $exp_cls  = $days <= 7 ? 'mp-expires-warn' : 'mp-expires-ok';
                     <div class="<?= $acc_cls ?> mb-2">Accuracy: <?= $accuracy ?>%</div>
                     <div class="mt-auto">
                         <a href="practice-topics.php?purchased_id=<?= $purchased_id ?>&subject_id=<?= (int)$row['id'] ?>"
-                           class="btn-qs-gold d-block text-center">
+                        class="btn-qs-gold d-block text-center mb-2">
                             <?= $answered > 0 ? 'Continue' : 'Start' ?>
+                        </a>
+                        <a href="leaderboard.php?purchased_id=<?= $purchased_id ?>&subject_id=<?= (int)$row['id'] ?>"
+                        class="btn-qs-sm d-block text-center">
+                            🏆 Leaderboard
                         </a>
                     </div>
                 </div>

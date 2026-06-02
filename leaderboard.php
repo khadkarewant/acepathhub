@@ -1,250 +1,362 @@
 <?php
 require_once "src/db/db_conn.php";
 require_once "src/db/session.php";
-require_once "src/db/privileges.php";
 
-// Group ID
-$group_id = isset($_GET['group_id']) ? intval($_GET['group_id']) : 0;
-if ($group_id <= 0) {
-    header("Location: home.php");
+require_role(ROLE_STUDENT);
+
+// ── Parameters ────────────────────────────────────────────────────────────
+$purchased_id = isset($_GET['purchased_id']) && ctype_digit($_GET['purchased_id']) ? (int)$_GET['purchased_id'] : 0;
+$subject_id   = isset($_GET['subject_id'])   && ctype_digit($_GET['subject_id'])   ? (int)$_GET['subject_id']   : 0;
+$topic_id     = isset($_GET['topic_id'])     && ctype_digit($_GET['topic_id'])     ? (int)$_GET['topic_id']     : 0;
+$time_filter  = in_array($_GET['time'] ?? '', ['month', 'week']) ? $_GET['time'] : 'all';
+
+if ($purchased_id === 0 || $subject_id === 0) {
+    header("Location: product-mine.php");
     exit;
 }
 
-// Pagination
-$per_page = 50;
-$page = isset($_GET['page']) ? max(1,intval($_GET['page'])) : 1;
-$offset = ($page-1) * $per_page;
-
-// Fetch group info including course
+// ── Validate purchase + get product_id ───────────────────────────────────
 $stmt = mysqli_prepare($conn,
-    "SELECT g.group_name, p.id AS product_id, p.course_id, c.name AS course_name
-     FROM product_topic_groups g
-     JOIN products p ON p.id = g.product_id
-     JOIN courses c ON c.id = p.course_id
-     WHERE g.id = ?
+    "SELECT pp.id, pp.product_id, p.name AS product_name, p.exam_body_id,
+            eb.name AS exam_body_name
+     FROM purchased_products pp
+     JOIN products p     ON p.id  = pp.product_id
+     JOIN exam_bodies eb ON eb.id = p.exam_body_id
+     WHERE pp.id = ? AND pp.user_id = ? AND pp.status = 'active'
+       AND p.product_type = 'practice' AND pp.expires_at >= CURDATE()
      LIMIT 1"
 );
-if (!$stmt) {
-    header("Location: home.php");
-    exit;
-}
-mysqli_stmt_bind_param($stmt, 'i', $group_id);
+mysqli_stmt_bind_param($stmt, 'ii', $purchased_id, $user_id);
 mysqli_stmt_execute($stmt);
-$group_result = mysqli_stmt_get_result($stmt);
-$group = $group_result ? mysqli_fetch_assoc($group_result) : null;
+$r        = mysqli_stmt_get_result($stmt);
+$purchase = mysqli_fetch_assoc($r);
+mysqli_free_result($r);
 mysqli_stmt_close($stmt);
 
-if (!$group) {
-    header("Location: home.php");
+if (!$purchase) {
+    header("Location: product-mine.php");
     exit;
 }
 
-$product_id = (int)$group['product_id'];
+$product_id = (int)$purchase['product_id'];
 
-// Leaderboard query (all for rank calculation)
-$stmt2 = mysqli_prepare($conn,
-    "SELECT
-        u.user_id,
-        CONCAT(u.first_name,' ',u.last_name) AS student_name,
-        COUNT(pa.id) AS attempted,
-        SUM(pa.is_correct=1) AS correct,
-        SUM(pa.is_correct=0) AS wrong,
-        ROUND((SUM(pa.is_correct=1)/COUNT(pa.id))*100,2) AS accuracy
-     FROM practice_answers pa
-     JOIN users u ON u.user_id = pa.user_id
-     JOIN mcqs m ON m.id = pa.mcq_id
-     JOIN product_topics pt ON pt.topic_id = m.topic_id
-     WHERE pt.group_id = ?
-       AND m.verified = 'true'
-       AND m.status = 'live'
-       AND pa.product_id = ?
-     GROUP BY pa.user_id
-     HAVING attempted > 0
-     ORDER BY correct DESC, accuracy DESC"
+// ── Validate subject ──────────────────────────────────────────────────────
+$stmt = mysqli_prepare($conn,
+    "SELECT id, name FROM subjects WHERE id = ? AND exam_body_id = ? LIMIT 1"
 );
-if (!$stmt2) {
-    header("Location: home.php");
+mysqli_stmt_bind_param($stmt, 'ii', $subject_id, $purchase['exam_body_id']);
+mysqli_stmt_execute($stmt);
+$r       = mysqli_stmt_get_result($stmt);
+$subject = mysqli_fetch_assoc($r);
+mysqli_free_result($r);
+mysqli_stmt_close($stmt);
+
+if (!$subject) {
+    header("Location: product-mine.php");
     exit;
 }
-mysqli_stmt_bind_param($stmt2, 'ii', $group_id, $product_id);
-mysqli_stmt_execute($stmt2);
-$leaderboard_res_all = mysqli_stmt_get_result($stmt2);
 
+// ── Validate topic (if provided) ─────────────────────────────────────────
+$topic = null;
+if ($topic_id > 0) {
+    $stmt = mysqli_prepare($conn,
+        "SELECT id, name FROM topics WHERE id = ? AND subject_id = ? LIMIT 1"
+    );
+    mysqli_stmt_bind_param($stmt, 'ii', $topic_id, $subject_id);
+    mysqli_stmt_execute($stmt);
+    $r     = mysqli_stmt_get_result($stmt);
+    $topic = mysqli_fetch_assoc($r);
+    mysqli_free_result($r);
+    mysqli_stmt_close($stmt);
 
-// Process all rows to get ranks
+    if (!$topic) {
+        header("Location: leaderboard.php?purchased_id={$purchased_id}&subject_id={$subject_id}");
+        exit;
+    }
+}
+
+// ── Topics list for topic-wise tab ────────────────────────────────────────
+$stmt = mysqli_prepare($conn,
+    "SELECT id, name FROM topics WHERE subject_id = ? ORDER BY id ASC"
+);
+mysqli_stmt_bind_param($stmt, 'i', $subject_id);
+mysqli_stmt_execute($stmt);
+$r      = mysqli_stmt_get_result($stmt);
+$topics = mysqli_fetch_all($r, MYSQLI_ASSOC);
+mysqli_free_result($r);
+mysqli_stmt_close($stmt);
+
+// ── Time filter clause ────────────────────────────────────────────────────
+$time_clause = '';
+if ($time_filter === 'week') {
+    $time_clause = "AND pa.answered_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)";
+} elseif ($time_filter === 'month') {
+    $time_clause = "AND pa.answered_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)";
+}
+
+// ── Leaderboard query ─────────────────────────────────────────────────────
+if ($topic_id > 0) {
+    // Topic-wise
+    $sql = "SELECT
+                u.user_id,
+                CONCAT(u.first_name, ' ', u.last_name) AS student_name,
+                COUNT(pa.id)                            AS attempted,
+                SUM(pa.is_correct = 1)                  AS correct,
+                SUM(pa.is_correct = 0)                  AS wrong,
+                ROUND((SUM(pa.is_correct = 1) / COUNT(pa.id)) * 100, 2) AS accuracy
+            FROM practice_answers pa
+            JOIN users u           ON u.user_id        = pa.user_id
+            JOIN questions q       ON q.id             = pa.question_id
+            JOIN question_sets qs  ON qs.id            = q.question_set_id
+            JOIN purchased_products pp ON pp.user_id   = pa.user_id
+                                      AND pp.product_id = ?
+                                      AND pp.status     = 'active'
+            WHERE qs.topic_id = ?
+              AND qs.verified  = 1
+              AND qs.status    = 'published'
+              AND qs.source    = 'practice'
+              {$time_clause}
+            GROUP BY pa.user_id
+            HAVING attempted > 0
+            ORDER BY correct DESC, accuracy DESC";
+    $stmt = mysqli_prepare($conn, $sql);
+    mysqli_stmt_bind_param($stmt, 'ii', $product_id, $topic_id);
+} else {
+    // Subject-wise
+    $sql = "SELECT
+                u.user_id,
+                CONCAT(u.first_name, ' ', u.last_name) AS student_name,
+                COUNT(pa.id)                            AS attempted,
+                SUM(pa.is_correct = 1)                  AS correct,
+                SUM(pa.is_correct = 0)                  AS wrong,
+                ROUND((SUM(pa.is_correct = 1) / COUNT(pa.id)) * 100, 2) AS accuracy
+            FROM practice_answers pa
+            JOIN users u           ON u.user_id        = pa.user_id
+            JOIN questions q       ON q.id             = pa.question_id
+            JOIN question_sets qs  ON qs.id            = q.question_set_id
+            JOIN topics t          ON t.id             = qs.topic_id
+            JOIN purchased_products pp ON pp.user_id   = pa.user_id
+                                      AND pp.product_id = ?
+                                      AND pp.status     = 'active'
+            WHERE t.subject_id   = ?
+              AND qs.verified     = 1
+              AND qs.status       = 'published'
+              AND qs.source       = 'practice'
+              {$time_clause}
+            GROUP BY pa.user_id
+            HAVING attempted > 0
+            ORDER BY correct DESC, accuracy DESC";
+    $stmt = mysqli_prepare($conn, $sql);
+    mysqli_stmt_bind_param($stmt, 'ii', $product_id, $subject_id);
+}
+
+mysqli_stmt_execute($stmt);
+$res = mysqli_stmt_get_result($stmt);
+$all_rows = mysqli_fetch_all($res, MYSQLI_ASSOC);
+mysqli_free_result($res);
+mysqli_stmt_close($stmt);
+
+// ── Assign ranks + find current user ─────────────────────────────────────
 $leaderboard_all = [];
-$user_rank_info = null;
-$rank_counter = 1;
-while ($row = mysqli_fetch_assoc($leaderboard_res_all)) {
+$user_rank_info  = null;
+$rank_counter    = 1;
+foreach ($all_rows as $row) {
     $row['rank'] = $rank_counter;
-    if ($row['user_id'] == $user_id) $user_rank_info = $row;
+    if ((int)$row['user_id'] === $user_id) $user_rank_info = $row;
     $leaderboard_all[] = $row;
     $rank_counter++;
 }
-mysqli_stmt_close($stmt2);
 
-// Pagination slice
 $total_users = count($leaderboard_all);
-$total_pages = ceil($total_users / $per_page);
-$leaderboard = array_slice($leaderboard_all, $offset, $per_page);
 
-// Determine page where user rank exists
-$my_rank_page = $user_rank_info ? ceil($user_rank_info['rank'] / $per_page) : 1;
+// ── Pagination ────────────────────────────────────────────────────────────
+$per_page    = 50;
+$page        = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
+$offset      = ($page - 1) * $per_page;
+$total_pages = (int)ceil($total_users / $per_page);
+$leaderboard = array_slice($leaderboard_all, $offset, $per_page);
+$my_rank_page = $user_rank_info ? (int)ceil($user_rank_info['rank'] / $per_page) : 1;
+
+// ── Active tab ────────────────────────────────────────────────────────────
+$active_tab = $topic_id > 0 ? 'topic' : 'subject';
+
+// ── Build base URL for filters ────────────────────────────────────────────
+$base_url = "leaderboard.php?purchased_id={$purchased_id}&subject_id={$subject_id}";
+if ($topic_id > 0) $base_url .= "&topic_id={$topic_id}";
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Leaderboard - <?php echo htmlspecialchars($group['group_name']); ?></title>
-<?php include("src/inc/links.php"); ?>
-<style>
-/* Rank Highlights */
-.rank-1{background:#ffd700;font-weight:bold;}
-.rank-2{background:#c0c0c0;font-weight:bold;}
-.rank-3{background:#cd7f32;font-weight:bold;}
-
-/* Table styling */
-.table td, .table th { vertical-align: middle; text-align: center; padding:0.75rem; }
-
-/* Mobile card view */
-@media (max-width: 767px) {
-    .table thead { display: none; }
-    .table tr { display: block; margin-bottom: 10px; border:1px solid #ddd; border-radius:5px; padding:10px; }
-    .table td { display: flex; justify-content: space-between; padding:5px 0; border-bottom:1px dashed #ccc; }
-    .table td:last-child { border-bottom:none; }
-    .table td:before { content: attr(data-label); font-weight:bold; }
-}
-
-/* User Rank Card */
-.user-rank-card{
-    border:2px solid var(--primary);
-    padding:15px;
-    border-radius:10px;
-    margin-bottom:20px;
-    text-align:center;
-    background:#f8f9fa;
-}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leaderboard — <?= htmlspecialchars($subject['name'], ENT_QUOTES, 'UTF-8') ?></title>
+    <?php include "inc/links.php"; ?>
 </head>
 <body>
+<?php include "inc/header.php"; ?>
 
-<?php include("src/inc/header.php"); ?>
+<div class="container py-4">
 
-<div class="container-fluid mt-4">
+    <div class="qs-list-header">
+        <div>
+            <div class="qs-breadcrumb">
+                <?= htmlspecialchars($purchase['exam_body_name'], ENT_QUOTES, 'UTF-8') ?>
+                &rsaquo; <?= htmlspecialchars($subject['name'], ENT_QUOTES, 'UTF-8') ?>
+                <?php if ($topic): ?>
+                    &rsaquo; <?= htmlspecialchars($topic['name'], ENT_QUOTES, 'UTF-8') ?>
+                <?php endif; ?>
+            </div>
+            <div class="qs-list-title">🏆 Leaderboard</div>
+        </div>
+        <a href="practice-subject.php?purchased_id=<?= $purchased_id ?>" class="btn-qs-sm">← Back</a>
+    </div>
 
-<div class="text-center mb-3">
-    <h4>🏆 Leaderboard</h4>
-    <p class="text-muted">
-        Course: <?php echo htmlspecialchars($group['course_name']); ?><br>
-        Topic: <?php echo htmlspecialchars($group['group_name']); ?>
-    </p>
-</div>
+    <!-- Tabs -->
+    <div class="qs-tabs mb-3">
+        <a href="leaderboard.php?purchased_id=<?= $purchased_id ?>&subject_id=<?= $subject_id ?>&time=<?= $time_filter ?>"
+           class="qs-tab <?= $active_tab === 'subject' ? 'qs-tab-active' : '' ?>">
+            Subject-wise
+        </a>
+        <a href="leaderboard.php?purchased_id=<?= $purchased_id ?>&subject_id=<?= $subject_id ?>&topic_id=<?= $topic_id > 0 ? $topic_id : ($topics[0]['id'] ?? 0) ?>&time=<?= $time_filter ?>"
+           class="qs-tab <?= $active_tab === 'topic' ? 'qs-tab-active' : '' ?>">
+            Topic-wise
+        </a>
+    </div>
 
-<!-- Back to Topics -->
-<div class="mb-3">
-    <a href="topics.php?product_id=<?php echo $group['product_id']; ?>" 
-       class="btn btn-outline-primary btn-sm">
-        ← Back to Topics
-    </a>
-</div>
+    <!-- Topic selector (topic-wise tab only) -->
+    <?php if ($active_tab === 'topic' && !empty($topics)): ?>
+    <div class="mb-3">
+        <select class="form-select qs-eb-select"
+                onchange="window.location.href='leaderboard.php?purchased_id=<?= $purchased_id ?>&subject_id=<?= $subject_id ?>&topic_id='+this.value+'&time=<?= $time_filter ?>'">
+            <?php foreach ($topics as $t): ?>
+                <option value="<?= $t['id'] ?>" <?= $t['id'] == $topic_id ? 'selected' : '' ?>>
+                    <?= htmlspecialchars($t['name'], ENT_QUOTES, 'UTF-8') ?>
+                </option>
+            <?php endforeach; ?>
+        </select>
+    </div>
+    <?php endif; ?>
 
-<!-- User Rank Card -->
-<?php if($user_rank_info): ?>
-<div class="user-rank-card">
-    <h5>Your Rank: #<?php echo $user_rank_info['rank']; ?></h5>
-    <p>
-        Name: <?php echo htmlspecialchars($user_rank_info['student_name']); ?><br>
-        Attempted: <?php echo $user_rank_info['attempted']; ?> | 
-        Correct: <?php echo $user_rank_info['correct']; ?> | 
-        Wrong: <?php echo $user_rank_info['wrong']; ?> | 
-        Accuracy: <?php echo $user_rank_info['accuracy']; ?>%
-    </p>
-</div>
+    <!-- Time filter -->
+    <div class="lb-time-filter mb-3">
+        <?php foreach (['all' => 'All Time', 'month' => 'This Month', 'week' => 'This Week'] as $val => $label): ?>
+            <a href="<?= $base_url ?>&time=<?= $val ?>"
+               class="lb-time-btn <?= $time_filter === $val ? 'lb-time-active' : '' ?>">
+                <?= $label ?>
+            </a>
+        <?php endforeach; ?>
+    </div>
 
-<div class="text-center mb-3">
-    <a href="?group_id=<?php echo $group_id; ?>&page=<?php echo $my_rank_page; ?>#my-row" 
-       class="btn btn-primary btn-sm">Go to My Rank</a>
-</div>
-<?php else: ?>
-<div class="user-rank-card">
-    <p class="text-muted">You haven't attempted any questions yet.</p>
-</div>
-<?php endif; ?>
+    <!-- Total participants -->
+    <div class="lb-total mb-3">
+        <?= $total_users ?> student<?= $total_users !== 1 ? 's' : '' ?> on the board
+    </div>
 
-<!-- Leaderboard Table -->
-<div class="table-responsive">
-<table class="table table-bordered table-striped">
-    <thead class="table-dark">
-        <tr>
-            <th>Rank</th>
-            <th>Student</th>
-            <th>Attempted</th>
-            <th>Correct</th>
-            <th>Wrong</th>
-            <th>Accuracy %</th>
-        </tr>
-    </thead>
-    <tbody>
-    <?php
-    if(empty($leaderboard)){
-        echo '<tr><td colspan="6" class="text-center text-muted">No data yet</td></tr>';
-    } else {
-        foreach($leaderboard as $row){
-            $rank_class = ($row['rank']==1?'rank-1':($row['rank']==2?'rank-2':($row['rank']==3?'rank-3':'')));
-            $rank_icon = ($row['rank']==1?'🏆':($row['rank']==2?'🥈':($row['rank']==3?'🥉':'')));
-            echo '<tr id="'.($row['user_id']==$user_id?'my-row':'').'" class="'.$rank_class.'">';
-            echo '<td data-label="Rank">'.$rank_icon.' '.$row['rank'].'</td>';
-            echo '<td data-label="Student">'.htmlspecialchars($row['student_name']).'</td>';
-            echo '<td data-label="Attempted">'.$row['attempted'].'</td>';
-            echo '<td data-label="Correct">'.$row['correct'].'</td>';
-            echo '<td data-label="Wrong">'.$row['wrong'].'</td>';
-            echo '<td data-label="Accuracy %">'.$row['accuracy'].'%</td>';
-            echo '</tr>';
-        }
-    }
-    ?>
-    </tbody>
-</table>
-</div>
-
-<!-- Pagination -->
-<?php if($total_pages > 1): ?>
-<nav aria-label="Leaderboard pagination">
-    <ul class="pagination justify-content-center mt-3">
-        <?php if($page>1): ?>
-        <li class="page-item">
-            <a class="page-link" href="?group_id=<?php echo $group_id; ?>&page=<?php echo $page-1; ?>">Previous</a>
-        </li>
+    <!-- User rank card -->
+    <?php if ($user_rank_info): ?>
+    <div class="lb-my-rank-card mb-3">
+        <div class="lb-my-rank-title">Your Rank</div>
+        <div class="lb-my-rank-num"><?= $user_rank_info['rank'] === 1 ? '🏆' : ($user_rank_info['rank'] === 2 ? '🥈' : ($user_rank_info['rank'] === 3 ? '🥉' : '')) ?> #<?= $user_rank_info['rank'] ?> of <?= $total_users ?></div>
+        <div class="lb-my-rank-stats">
+            <span><?= $user_rank_info['attempted'] ?> attempted</span>
+            <span><?= $user_rank_info['correct'] ?> correct</span>
+            <span><?= $user_rank_info['wrong'] ?> wrong</span>
+            <span><?= $user_rank_info['accuracy'] ?>% accuracy</span>
+        </div>
+        <?php if ($total_pages > 1 && $my_rank_page !== $page): ?>
+            <a href="<?= $base_url ?>&time=<?= $time_filter ?>&page=<?= $my_rank_page ?>#my-row"
+               class="btn-qs-sm mt-2 d-inline-block">Jump to my rank</a>
         <?php endif; ?>
-        <?php for($p=1;$p<=$total_pages;$p++): ?>
-        <li class="page-item <?php echo ($p==$page)?'active':''; ?>">
-            <a class="page-link" href="?group_id=<?php echo $group_id; ?>&page=<?php echo $p; ?>"><?php echo $p; ?></a>
-        </li>
-        <?php endfor; ?>
-        <?php if($page<$total_pages): ?>
-        <li class="page-item">
-            <a class="page-link" href="?group_id=<?php echo $group_id; ?>&page=<?php echo $page+1; ?>">Next</a>
-        </li>
+    </div>
+    <?php else: ?>
+    <div class="lb-my-rank-card lb-no-rank mb-3">
+        You haven't attempted any questions yet.
+    </div>
+    <?php endif; ?>
+
+    <!-- Top 3 podium -->
+    <?php if (count($leaderboard_all) >= 1 && $page === 1): ?>
+    <div class="lb-podium mb-4">
+        <?php
+        $podium = array_slice($leaderboard_all, 0, 3);
+        $podium_order = [];
+        if (isset($podium[1])) $podium_order[] = $podium[1]; // silver left
+        if (isset($podium[0])) $podium_order[] = $podium[0]; // gold center
+        if (isset($podium[2])) $podium_order[] = $podium[2]; // bronze right
+        foreach ($podium_order as $p):
+            $cls = $p['rank'] === 1 ? 'lb-gold' : ($p['rank'] === 2 ? 'lb-silver' : 'lb-bronze');
+            $icon = $p['rank'] === 1 ? '🏆' : ($p['rank'] === 2 ? '🥈' : '🥉');
+        ?>
+        <div class="lb-podium-item <?= $cls ?>">
+            <div class="lb-podium-icon"><?= $icon ?></div>
+            <div class="lb-podium-name"><?= htmlspecialchars($p['student_name'], ENT_QUOTES, 'UTF-8') ?></div>
+            <div class="lb-podium-correct"><?= $p['correct'] ?> correct</div>
+            <div class="lb-podium-accuracy"><?= $p['accuracy'] ?>%</div>
+        </div>
+        <?php endforeach; ?>
+    </div>
+    <?php endif; ?>
+
+    <!-- Leaderboard table -->
+    <?php if (empty($leaderboard)): ?>
+        <div class="qs-empty">No data yet for this <?= $topic_id > 0 ? 'topic' : 'subject' ?>.</div>
+    <?php else: ?>
+    <div class="table-responsive">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Rank</th>
+                    <th>Student</th>
+                    <th>Attempted</th>
+                    <th>Correct</th>
+                    <th>Wrong</th>
+                    <th>Accuracy %</th>
+                </tr>
+            </thead>
+            <tbody>
+            <?php foreach ($leaderboard as $row):
+                $rank_cls = $row['rank'] === 1 ? 'lb-row-gold' : ($row['rank'] === 2 ? 'lb-row-silver' : ($row['rank'] === 3 ? 'lb-row-bronze' : ''));
+                $rank_icon = $row['rank'] === 1 ? '🏆 ' : ($row['rank'] === 2 ? '🥈 ' : ($row['rank'] === 3 ? '🥉 ' : ''));
+                $is_me = (int)$row['user_id'] === $user_id;
+            ?>
+            <tr id="<?= $is_me ? 'my-row' : '' ?>" class="<?= $rank_cls ?> <?= $is_me ? 'lb-my-row' : '' ?>">
+                <td><?= $rank_icon ?><?= $row['rank'] ?></td>
+                <td><?= htmlspecialchars($row['student_name'], ENT_QUOTES, 'UTF-8') ?><?= $is_me ? ' <span class="lb-you-badge">You</span>' : '' ?></td>
+                <td><?= $row['attempted'] ?></td>
+                <td><?= $row['correct'] ?></td>
+                <td><?= $row['wrong'] ?></td>
+                <td><?= $row['accuracy'] ?>%</td>
+            </tr>
+            <?php endforeach; ?>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    <?php if ($total_pages > 1): ?>
+    <div class="lb-pagination">
+        <?php if ($page > 1): ?>
+            <a href="<?= $base_url ?>&time=<?= $time_filter ?>&page=<?= $page - 1 ?>" class="btn-qs-sm">← Prev</a>
         <?php endif; ?>
-    </ul>
-</nav>
-<?php endif; ?>
+        <span class="lb-page-info">Page <?= $page ?> of <?= $total_pages ?></span>
+        <?php if ($page < $total_pages): ?>
+            <a href="<?= $base_url ?>&time=<?= $time_filter ?>&page=<?= $page + 1 ?>" class="btn-qs-sm">Next →</a>
+        <?php endif; ?>
+    </div>
+    <?php endif; ?>
+    <?php endif; ?>
 
 </div>
 
-<!-- Smooth Scroll Script -->
 <script>
-document.addEventListener("DOMContentLoaded", function() {
-    if(window.location.hash === "#my-row"){
+document.addEventListener("DOMContentLoaded", function () {
+    if (window.location.hash === "#my-row") {
         const myRow = document.getElementById("my-row");
-        if(myRow){
-            myRow.scrollIntoView({behavior: "smooth", block: "center"});
-        }
+        if (myRow) myRow.scrollIntoView({ behavior: "smooth", block: "center" });
     }
 });
 </script>
 
-<?php include("src/inc/footer.php"); ?>
+<?php include "inc/footer.php"; ?>
 </body>
 </html>

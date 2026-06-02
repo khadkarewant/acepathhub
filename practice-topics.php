@@ -62,7 +62,7 @@ if ($purchased_id === 0 || $subject_id === 0) {
 
 // ── Validate purchase ─────────────────────────────────────────────────────
 $stmt = mysqli_prepare($conn,
-    "SELECT pp.id, p.exam_body_id, p.name AS product_name, pp.expires_at
+    "SELECT pp.id, p.id AS product_id, p.exam_body_id, p.name AS product_name, pp.expires_at
      FROM purchased_products pp
      JOIN products p ON p.id = pp.product_id
      WHERE pp.id = ? AND pp.user_id = ? AND pp.status = 'active'
@@ -133,6 +133,57 @@ $total_answered   = array_sum(array_column($topics, 'answered'));
 $total_correct    = array_sum(array_column($topics, 'correct'));
 $subject_accuracy = $total_answered > 0 ? round(($total_correct / $total_answered) * 100) : 0;
 $subject_progress = $total_questions > 0 ? round(($total_answered / $total_questions) * 100) : 0;
+
+// ── Topic ranks for this product ──────────────────────────────────────────
+$product_id = (int)$purchase['product_id'];
+$topic_ids  = array_column($topics, 'id');
+$topic_ranks = [];
+
+if (!empty($topic_ids)) {
+    $placeholders = implode(',', array_fill(0, count($topic_ids), '?'));
+    $types        = str_repeat('i', count($topic_ids) + 1);
+    $bind_params  = array_merge([$product_id], $topic_ids);
+
+    $sql = "SELECT
+                qs.topic_id,
+                pa.user_id,
+                SUM(pa.is_correct = 1) AS correct,
+                ROUND((SUM(pa.is_correct = 1) / COUNT(pa.id)) * 100, 2) AS accuracy
+            FROM practice_answers pa
+            JOIN questions q      ON q.id  = pa.question_id
+            JOIN question_sets qs ON qs.id = q.question_set_id
+            JOIN purchased_products pp ON pp.user_id = pa.user_id AND pp.product_id = ?
+            WHERE qs.topic_id IN ($placeholders)
+              AND qs.verified = 1 AND qs.status = 'published' AND qs.source = 'practice'
+              AND pp.status = 'active'
+            GROUP BY qs.topic_id, pa.user_id
+            ORDER BY qs.topic_id ASC, correct DESC, accuracy DESC";
+
+    $stmt = mysqli_prepare($conn, $sql);
+    mysqli_stmt_bind_param($stmt, $types, ...$bind_params);
+    mysqli_stmt_execute($stmt);
+    $res  = mysqli_stmt_get_result($stmt);
+    $rows = mysqli_fetch_all($res, MYSQLI_ASSOC);
+    mysqli_free_result($res);
+    mysqli_stmt_close($stmt);
+
+    // Group by topic_id, assign ranks, find user rank
+    $topic_data = [];
+    foreach ($rows as $r) {
+        $topic_data[$r['topic_id']][] = $r;
+    }
+    foreach ($topic_data as $tid => $participants) {
+        $rank = 1;
+        foreach ($participants as $p) {
+            if ((int)$p['user_id'] === $user_id) {
+                $topic_ranks[$tid] = ['rank' => $rank, 'total' => count($participants)];
+                break;
+            }
+            $rank++;
+        }
+    }
+}
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -217,9 +268,22 @@ $subject_progress = $total_questions > 0 ? round(($total_answered / $total_quest
                         <div class="ps-progress-fill" style="width:<?= $progress ?>%"></div>
                     </div>
                     <div class="<?= $acc_cls ?> mb-2">Accuracy: <?= $accuracy ?>%</div>
+                    
+                    <?php if (isset($topic_ranks[$row['id']])): ?>
+                        <?php $tr = $topic_ranks[$row['id']]; ?>
+                        <div class="mb-2">
+                            <span class="lb-rank-badge lb-rank-<?= $tr['rank'] <= 3 ? $tr['rank'] : ($tr['rank'] <= 10 ? 'top10' : 'default') ?>">
+                                <?= $tr['rank'] === 1 ? '🏆' : ($tr['rank'] === 2 ? '🥈' : ($tr['rank'] === 3 ? '🥉' : '')) ?>
+                                #<?= $tr['rank'] ?> of <?= $tr['total'] ?>
+                            </span>
+                        </div>
+                    <?php endif; ?>
+
                     <div class="mt-auto">
                         <a href="practice-sets.php?purchased_id=<?= $purchased_id ?>&topic_id=<?= (int)$row['id'] ?>"
                            class="btn-qs-gold d-block text-center"><?= $btn_label ?></a>
+                        <a href="leaderboard.php?purchased_id=<?= $purchased_id ?>&subject_id=<?= $subject_id ?>&topic_id=<?= (int)$row['id'] ?>"
+                           class="btn-qs-sm d-block text-center">🏆 Leaderboard</a>
                     </div>
                 </div>
             </div>
