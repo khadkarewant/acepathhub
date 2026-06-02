@@ -75,17 +75,6 @@ if ($topic_id > 0) {
     }
 }
 
-// ── Topics list for topic-wise tab ────────────────────────────────────────
-$stmt = mysqli_prepare($conn,
-    "SELECT id, name FROM topics WHERE subject_id = ? ORDER BY id ASC"
-);
-mysqli_stmt_bind_param($stmt, 'i', $subject_id);
-mysqli_stmt_execute($stmt);
-$r      = mysqli_stmt_get_result($stmt);
-$topics = mysqli_fetch_all($r, MYSQLI_ASSOC);
-mysqli_free_result($r);
-mysqli_stmt_close($stmt);
-
 // ── Time filter clause ────────────────────────────────────────────────────
 $time_clause = '';
 if ($time_filter === 'week') {
@@ -177,9 +166,6 @@ $total_pages = (int)ceil($total_users / $per_page);
 $leaderboard = array_slice($leaderboard_all, $offset, $per_page);
 $my_rank_page = $user_rank_info ? (int)ceil($user_rank_info['rank'] / $per_page) : 1;
 
-// ── Active tab ────────────────────────────────────────────────────────────
-$active_tab = $topic_id > 0 ? 'topic' : 'subject';
-
 // ── Build base URL for filters ────────────────────────────────────────────
 $base_url = "leaderboard.php?purchased_id={$purchased_id}&subject_id={$subject_id}";
 if ($topic_id > 0) $base_url .= "&topic_id={$topic_id}";
@@ -208,34 +194,10 @@ if ($topic_id > 0) $base_url .= "&topic_id={$topic_id}";
             </div>
             <div class="qs-list-title">🏆 Leaderboard</div>
         </div>
-        <a href="practice-subject.php?purchased_id=<?= $purchased_id ?>" class="btn-qs-sm">← Back</a>
+        <a href="<?= $topic_id > 0 
+            ? "practice-topics.php?purchased_id={$purchased_id}&subject_id={$subject_id}" 
+            : "practice-subject.php?purchased_id={$purchased_id}" ?>" class="btn-qs-sm">← Back</a>
     </div>
-
-    <!-- Tabs -->
-    <div class="qs-tabs mb-3">
-        <a href="leaderboard.php?purchased_id=<?= $purchased_id ?>&subject_id=<?= $subject_id ?>&time=<?= $time_filter ?>"
-           class="qs-tab <?= $active_tab === 'subject' ? 'qs-tab-active' : '' ?>">
-            Subject-wise
-        </a>
-        <a href="leaderboard.php?purchased_id=<?= $purchased_id ?>&subject_id=<?= $subject_id ?>&topic_id=<?= $topic_id > 0 ? $topic_id : ($topics[0]['id'] ?? 0) ?>&time=<?= $time_filter ?>"
-           class="qs-tab <?= $active_tab === 'topic' ? 'qs-tab-active' : '' ?>">
-            Topic-wise
-        </a>
-    </div>
-
-    <!-- Topic selector (topic-wise tab only) -->
-    <?php if ($active_tab === 'topic' && !empty($topics)): ?>
-    <div class="mb-3">
-        <select class="form-select qs-eb-select"
-                onchange="window.location.href='leaderboard.php?purchased_id=<?= $purchased_id ?>&subject_id=<?= $subject_id ?>&topic_id='+this.value+'&time=<?= $time_filter ?>'">
-            <?php foreach ($topics as $t): ?>
-                <option value="<?= $t['id'] ?>" <?= $t['id'] == $topic_id ? 'selected' : '' ?>>
-                    <?= htmlspecialchars($t['name'], ENT_QUOTES, 'UTF-8') ?>
-                </option>
-            <?php endforeach; ?>
-        </select>
-    </div>
-    <?php endif; ?>
 
     <!-- Time filter -->
     <div class="lb-time-filter mb-3">
