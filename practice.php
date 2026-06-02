@@ -401,7 +401,7 @@ function renderSet(index) {
         // Explanation
         if (q.selected && q.explanation && q.explanation.trim() !== '') {
             html += `<div class="pq-explanation"><strong>Explanation:</strong> ${q.explanation}</div>`;
-        } else if (q.selected) {
+        } else {
             html += `<div class="pq-explanation pq-no-explanation"></div>`;
         }
 
