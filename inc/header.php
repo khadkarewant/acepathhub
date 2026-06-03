@@ -90,9 +90,9 @@
                 </div>
             </div>
 
-            <div class="side-links">
+            <!-- <div class="side-links">
                 <a href="user-stats.php"><i class="fa-solid fa-chart-bar"></i> Exam Stats</a>
-            </div>
+            </div> -->
 
             <div class="side-links">
                 <a href="purchase-stats.php"><i class="fa-solid fa-chart-line"></i> Purchase Stats</a>
@@ -141,9 +141,9 @@
             <div class="side-links">
                 <a href="leaderboard.php"><i class="fa-solid fa-trophy"></i> Leaderboard</a>
             </div>
-            <div class="side-links">
+            <!-- <div class="side-links">
                 <a href="user-stats.php"><i class="fa-solid fa-chart-simple"></i> My Stats</a>
-            </div>
+            </div> -->
 
         <?php endif; ?>
 
