@@ -85,7 +85,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['submit'] ?? '') === 'updat
              WHERE id = ?"
         );
         mysqli_stmt_bind_param(
-            $stmt, "sisiiiiddddi",
+            $stmt, "sisiiiidddddi",
             $name, $exam_body_id, $description,
             $duration_minutes, $total_questions, $total_marks, $sets,
             $price, $price_1m, $price_3m, $price_6m, $price_12m,
