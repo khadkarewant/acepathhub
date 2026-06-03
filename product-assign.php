@@ -13,17 +13,19 @@ if ($student_id <= 0) {
 }
 
 // Fetch student — must be ROLE_STUDENT
-$stmt = $conn->prepare("
-    SELECT user_id, first_name, middle_name, last_name, username, phone
-    FROM users
-    WHERE user_id = ? AND role = ? AND is_blocked = 0
-    LIMIT 1
-");
 $role_student = ROLE_STUDENT;
-$stmt->bind_param("ii", $student_id, $role_student);
-$stmt->execute();
-$student = $stmt->get_result()->fetch_assoc();
-$stmt->close();
+$stmt = mysqli_prepare($conn,
+    "SELECT user_id, first_name, middle_name, last_name, username, phone
+     FROM users
+     WHERE user_id = ? AND role = ? AND is_blocked = 0
+     LIMIT 1"
+);
+mysqli_stmt_bind_param($stmt, "ii", $student_id, $role_student);
+mysqli_stmt_execute($stmt);
+$res     = mysqli_stmt_get_result($stmt);
+$student = mysqli_fetch_assoc($res);
+mysqli_free_result($res);
+mysqli_stmt_close($stmt);
 
 if (!$student) {
     header("Location: users.php");
@@ -31,15 +33,34 @@ if (!$student) {
 }
 
 // Fetch active products
-$stmt = $conn->prepare("
-    SELECT p.id, p.name, p.product_type, p.price, p.sets
-    FROM products p
-    WHERE p.status = 'active'
-    ORDER BY p.product_type ASC, p.name ASC
-");
-$stmt->execute();
-$products = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-$stmt->close();
+$stmt = mysqli_prepare($conn,
+    "SELECT p.id, p.name, p.product_type, p.price, p.sets, p.exam_body_id
+     FROM products p
+     WHERE p.status = 'active'
+     ORDER BY p.product_type ASC, p.name ASC"
+);
+mysqli_stmt_execute($stmt);
+$res      = mysqli_stmt_get_result($stmt);
+$products = mysqli_fetch_all($res, MYSQLI_ASSOC);
+mysqli_free_result($res);
+mysqli_stmt_close($stmt);
+
+// Fetch all subjects grouped by exam_body_id
+$stmt = mysqli_prepare($conn, "SELECT id, name, exam_body_id FROM subjects ORDER BY exam_body_id ASC, name ASC");
+mysqli_stmt_execute($stmt);
+$res = mysqli_stmt_get_result($stmt);
+$all_subjects = mysqli_fetch_all($res, MYSQLI_ASSOC);
+mysqli_free_result($res);
+mysqli_stmt_close($stmt);
+
+// Group subjects by exam_body_id for JS
+$subjects_by_exam_body = [];
+foreach ($all_subjects as $s) {
+    $subjects_by_exam_body[(int)$s['exam_body_id']][] = [
+        'id'   => (int)$s['id'],
+        'name' => $s['name'],
+    ];
+}
 
 $student_name = trim(
     $student['first_name'] . ' ' .
@@ -85,16 +106,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['submit'] ?? '') === 'assig
         $err = 'Discount cannot be negative.';
     } else {
         // Fetch product to verify it's active and get type/sets/price
-        $stmt = $conn->prepare("
-            SELECT id, product_type, price, sets
+        $stmt = mysqli_prepare($conn,
+            "SELECT id, product_type, price, sets
             FROM products
             WHERE id = ? AND status = 'active'
-            LIMIT 1
-        ");
-        $stmt->bind_param("i", $product_id);
-        $stmt->execute();
-        $prod = $stmt->get_result()->fetch_assoc();
-        $stmt->close();
+            LIMIT 1"
+        );
+        mysqli_stmt_bind_param($stmt, "i", $product_id);
+        mysqli_stmt_execute($stmt);
+        $res  = mysqli_stmt_get_result($stmt);
+        $prod = mysqli_fetch_assoc($res);
+        mysqli_free_result($res);
+        mysqli_stmt_close($stmt);
 
         if (!$prod) {
             $err = 'Selected product is not available.';
@@ -102,15 +125,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['submit'] ?? '') === 'assig
             $err = 'Select a valid duration for practice product.';
         } elseif ($txn_mode !== 'free' && $txn_no !== '') {
             // Duplicate txn_no check
-            $stmt = $conn->prepare("SELECT id FROM purchased_products WHERE txn_no = ? LIMIT 1");
-            $stmt->bind_param("s", $txn_no);
-            $stmt->execute();
-            $dup = $stmt->get_result()->fetch_assoc();
-            $stmt->close();
+            $stmt = mysqli_prepare($conn, "SELECT id FROM purchased_products WHERE txn_no = ? LIMIT 1");
+            mysqli_stmt_bind_param($stmt, "s", $txn_no);
+            mysqli_stmt_execute($stmt);
+            $res = mysqli_stmt_get_result($stmt);
+            $dup = mysqli_fetch_assoc($res);
+            mysqli_free_result($res);
+            mysqli_stmt_close($stmt);
             if ($dup) {
                 $err = 'Transaction number already exists.';
             }
         }
+        
 
         if ($err === '') {
             $amount = max(0.0, (float)$prod['price'] - $discount);
@@ -129,39 +155,56 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['submit'] ?? '') === 'assig
 
             $txn_no_val = $txn_mode === 'free' ? null : ($txn_no === '' ? null : $txn_no);
 
-            $conn->begin_transaction();
+            mysqli_begin_transaction($conn);
             try {
-                $stmt = $conn->prepare("
-                    INSERT INTO purchased_products
+                $stmt = mysqli_prepare($conn,
+                    "INSERT INTO purchased_products
                         (user_id, product_id, amount, sets_remaining, expires_at, txn_note,
-                         txn_no, txn_mode, mobile, status, purchased_on, created_by)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)
-                ");
-                $stmt->bind_param(
-                    "iidissssssi",
+                        txn_no, txn_mode, mobile, status, purchased_on, created_by)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)"
+                );
+                mysqli_stmt_bind_param(
+                    $stmt, "iidissssssi",
                     $student_id, $product_id, $amount, $sets_remaining, $expires_at, $txn_note,
                     $txn_no_val, $txn_mode, $mobile, $today, $user_id
                 );
-                $stmt->execute();
-                $stmt->close();
+                mysqli_stmt_execute($stmt);
+                mysqli_stmt_close($stmt);
+
+                // Insert selected subjects
+                $subject_ids = $_POST['subject_ids'] ?? [];
+                if (!empty($subject_ids)) {
+                    $purchased_id = (int)mysqli_insert_id($conn);
+                    $stmt = mysqli_prepare($conn,
+                        "INSERT INTO purchased_product_subjects (purchased_id, subject_id) VALUES (?, ?)"
+                    );
+                    foreach ($subject_ids as $sid) {
+                        $sid = (int)$sid;
+                        if ($sid > 0) {
+                            mysqli_stmt_bind_param($stmt, "ii", $purchased_id, $sid);
+                            mysqli_stmt_execute($stmt);
+                        }
+                    }
+                    mysqli_stmt_close($stmt);
+                }
 
                 $note = "A product has been assigned to your account. Check My Products for details.";
                 $date = date('Y-m-d');
                 $time = date('H:i:s');
-                $stmt = $conn->prepare("
-                    INSERT INTO notification (user_id, notification, date, time)
-                    VALUES (?, ?, ?, ?)
-                ");
-                $stmt->bind_param("isss", $student_id, $note, $date, $time);
-                $stmt->execute();
-                $stmt->close();
+                $stmt = mysqli_prepare($conn,
+                    "INSERT INTO notification (user_id, notification, date, time)
+                    VALUES (?, ?, ?, ?)"
+                );
+                mysqli_stmt_bind_param($stmt, "isss", $student_id, $note, $date, $time);
+                mysqli_stmt_execute($stmt);
+                mysqli_stmt_close($stmt);
 
-                $conn->commit();
+                mysqli_commit($conn);
                 header("Location: user-details.php?user_id=" . $student_id . "&ok=assigned");
                 exit;
 
             } catch (Throwable $e) {
-                $conn->rollback();
+                mysqli_rollback($conn);
                 $err = 'Failed to assign product. Please try again.';
             }
         }
@@ -220,14 +263,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['submit'] ?? '') === 'assig
                             endif;
                         ?>
                             <option value="<?= $p['id'] ?>"
-                                    data-type="<?= htmlspecialchars($p['product_type'], ENT_QUOTES, 'UTF-8') ?>"
-                                    data-price="<?= (float)$p['price'] ?>">
+                                data-type="<?= htmlspecialchars($p['product_type'], ENT_QUOTES, 'UTF-8') ?>"
+                                data-price="<?= (float)$p['price'] ?>"
+                                data-exam-body="<?= (int)$p['exam_body_id'] ?>">
+                            
                                 <?= htmlspecialchars($p['name'], ENT_QUOTES, 'UTF-8') ?>
                                 (₦<?= number_format((float)$p['price'], 2) ?>)
                             </option>
                         <?php endforeach; ?>
                         <?php if ($current_type !== '') echo '</optgroup>'; ?>
                     </select>
+                </div>
+
+                <div class="mb-3 d-none" id="subjectRow">
+                    <label class="form-label">Subjects</label>
+                    <div id="subjectCheckboxes" class="d-flex flex-wrap gap-2">
+                        <!-- populated by JS -->
+                    </div>
+                    <small class="text-muted">Select the subjects for this student.</small>
                 </div>
 
                 <div class="mb-3 d-none" id="durationRow">
@@ -298,11 +351,34 @@ function toggleTxn(mode) {
     document.getElementById('bankNameRow').classList.toggle('d-none', mode !== 'bank');
     document.getElementById('otherNameRow').classList.toggle('d-none', mode !== 'other');
 }
+
+const subjectsByExamBody = <?= json_encode($subjects_by_exam_body, JSON_HEX_TAG) ?>;
+
 document.getElementById('productSelect').addEventListener('change', function () {
     const opt = this.options[this.selectedIndex];
     const type = opt.dataset.type;
+    const examBodyId = parseInt(opt.dataset.examBody);
+
     document.getElementById('durationRow').classList.toggle('d-none', type !== 'practice');
+
+    const subjectRow = document.getElementById('subjectRow');
+    const subjectBoxes = document.getElementById('subjectCheckboxes');
+    subjectBoxes.innerHTML = '';
+
+    const subjects = subjectsByExamBody[examBodyId] || [];
+    if (subjects.length > 0) {
+        subjects.forEach(function(s) {
+            const label = document.createElement('label');
+            label.className = 'form-check-label d-flex align-items-center gap-1';
+            label.innerHTML = `<input type="checkbox" name="subject_ids[]" value="${s.id}" class="form-check-input"> ${s.name}`;
+            subjectBoxes.appendChild(label);
+        });
+        subjectRow.classList.remove('d-none');
+    } else {
+        subjectRow.classList.add('d-none');
+    }
 });
+
 toggleTxn('bank');
 </script>
 
