@@ -62,7 +62,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['submit'] ?? '') === 'add_p
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')"
             );
             mysqli_stmt_bind_param(
-                $stmt, "ssisiiiidddddd",
+                $stmt, "ssisiiiiddddd",
                 $name, $product_type, $exam_body_id, $description,
                 $duration_minutes, $total_questions, $total_marks, $sets,
                 $price, $price_1m, $price_3m, $price_6m, $price_12m
@@ -225,6 +225,8 @@ function toggleProductType(type) {
     document.getElementById('price_single_row').classList.toggle('d-none', type === 'practice');
     document.getElementById('price_practice_row').classList.toggle('d-none', type !== 'practice');
 }
+const checkedType = document.querySelector('input[name="product_type"]:checked');
+if (checkedType) toggleProductType(checkedType.value);
 </script>
 
 <?php include("inc/footer.php"); ?>
