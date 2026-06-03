@@ -21,12 +21,7 @@ $_SESSION['signup_attempts'] = array_filter(
 
 // Initialize variables
 $errors = [];
-$first_name = $middle_name = $last_name = $username = $email = $phone = $referral_by = "";
-
-// Get referral from URL if provided
-if(isset($_GET['referral_by'])){
-    $referral_by = $_GET['referral_by'];
-}
+$first_name = $middle_name = $last_name = $username = $email = $phone = "";
 
 // Handle form submission
 if(isset($_POST['submit']) && $_POST['submit'] === "student_registration"){
@@ -47,18 +42,6 @@ if(isset($_POST['submit']) && $_POST['submit'] === "student_registration"){
         $phone = trim($_POST['phone']);
         $password = $_POST['password'];
         $confirm_password = $_POST['confirm_password'];
-
-        $referral_by = trim($_POST['referral_by']);
-        if($referral_by !== ""){
-            $stmt_ref = $conn->prepare("SELECT `user_id` FROM `users` WHERE `referral_code` = ? LIMIT 1");
-            $stmt_ref->bind_param("s", $referral_by);
-            $stmt_ref->execute();
-            $stmt_ref->store_result();
-            if($stmt_ref->num_rows === 0){
-                $errors['referral'] = "Invalid referral code.";
-            }
-            $stmt_ref->close();
-        }
 
         // Validate password match
         if(strlen($first_name) < 2 || strlen($first_name) > 50){
@@ -193,17 +176,10 @@ if(isset($_POST['submit']) && $_POST['submit'] === "student_registration"){
                                 <span class="input-group-text toggle-password" style="cursor:pointer; background-color:#fff; border-left:0;">👁️</span>
                             </div>
                         </div>
-                        
                             <?php if(isset($errors['password'])): ?><i class="text-danger"><?= htmlspecialchars($errors['password'], ENT_QUOTES, 'UTF-8') ?></i><?php endif; ?>
                         </div>
 
                         <div class="col-md-12">
-                            <label>Referral (Optional):</label>
-                            <input type="text" name="referral_by" value="<?php echo htmlspecialchars($referral_by); ?>" class="form-control"><br>
-                            <?php if(isset($errors['referral'])): ?>
-                                <i class="text-danger"><?= htmlspecialchars($errors['referral'], ENT_QUOTES, 'UTF-8') ?></i>
-                            <?php endif; ?>
-
                             <input type="checkbox" required id="tnc" />
                             <label for="tnc">I accept <a href="t&c.php" class="text-decoration-none">Terms & Conditions</a></label><br>
 
