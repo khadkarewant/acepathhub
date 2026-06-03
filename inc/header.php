@@ -95,7 +95,7 @@
             </div> -->
 
             <div class="side-links">
-                <a href="purchase-stats.php"><i class="fa-solid fa-chart-line"></i> Purchase Stats</a>
+                <a href="sales-stats.php"><i class="fa-solid fa-chart-line"></i> Sales Stats</a>
             </div>
 
             <div class="side-links">
