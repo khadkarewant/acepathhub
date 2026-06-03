@@ -16,7 +16,7 @@ if ($id === 0) {
     exit;
 }
 
-$stmt = mysqli_prepare($conn, "SELECT exam_body_id FROM subjects WHERE id = ? LIMIT 1");
+$stmt = mysqli_prepare($conn, "SELECT exam_body_id, syllabus_path FROM subjects WHERE id = ? LIMIT 1");
 mysqli_stmt_bind_param($stmt, "i", $id);
 mysqli_stmt_execute($stmt);
 $result = mysqli_stmt_get_result($stmt);
@@ -30,6 +30,11 @@ if (!$subject) {
 
 $exam_body_id = (int)$subject['exam_body_id'];
 $back = "subject-list.php?exam_body_id={$exam_body_id}";
+
+// Delete syllabus file if exists
+if (!empty($subject['syllabus_path']) && file_exists($subject['syllabus_path'])) {
+    unlink($subject['syllabus_path']);
+}
 
 $stmt = mysqli_prepare($conn, "SELECT COUNT(*) FROM topics WHERE subject_id = ?");
 mysqli_stmt_bind_param($stmt, "i", $id);

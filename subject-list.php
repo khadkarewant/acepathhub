@@ -105,16 +105,12 @@ mysqli_stmt_close($stmt);
                 <td><?= (int)$row['published_questions'] ?>/<?= (int)$row['total_questions'] ?></td>
                 <td>
                     <a href="topic-list.php?subject_id=<?= (int)$row['id'] ?>" class="btn-qs-sm">Topics</a>
-                    <?php if (has_role(ROLE_ADMIN)): ?>
-                        <a href="subject-edit.php?id=<?= (int)$row['id'] ?>" class="btn-qs-sm">Edit</a>
-                        <form method="POST" action="subject-delete.php" style="display:inline;"
-                              onsubmit="return confirm('Delete this subject?');">
-                            <?= csrf_input() ?>
-                            <input type="hidden" name="id" value="<?= (int)$row['id'] ?>">
-                            <button type="submit" class="btn-qs-danger">Delete</button>
-                        </form>
-                    <?php endif; ?>
+
                     <a href="past-paper-list.php?subject_id=<?= (int)$row['id'] ?>" class="btn-qs-sm">Past Papers</a>
+                    
+                    <?php if (has_role(ROLE_ADMIN)): ?>
+                        <a href="subject-detail.php?id=<?= (int)$row['id'] ?>" class="btn-qs-sm">Detail</a>
+                    <?php endif; ?>
                 </td>
             </tr>
         <?php endforeach;
