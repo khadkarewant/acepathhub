@@ -6,74 +6,65 @@ require_once __DIR__ . "/src/db/session.php";
 
 require_role(ROLE_ADMIN);
 
-$stmt = $conn->prepare("SELECT id, name FROM exam_bodies ORDER BY name ASC");
-$stmt->execute();
-$exam_bodies = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-$stmt->close();
+$stmt = mysqli_prepare($conn, "SELECT id, name FROM exam_bodies ORDER BY name ASC");
+mysqli_stmt_execute($stmt);
+$res         = mysqli_stmt_get_result($stmt);
+$exam_bodies = mysqli_fetch_all($res, MYSQLI_ASSOC);
+mysqli_free_result($res);
+mysqli_stmt_close($stmt);
 
 $err = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['submit'] ?? '') === 'add_product') {
     csrf_verify();
 
-    $name                  = trim((string)($_POST['name'] ?? ''));
-    $product_type = trim((string)($_POST['product_type'] ?? 'mock'));
-    $duration_minutes      = isset($_POST['duration_minutes']) ? (int)$_POST['duration_minutes'] : 0;
-    $total_questions       = isset($_POST['total_questions']) ? (int)$_POST['total_questions'] : 0;
-    $total_marks = isset($_POST['total_marks']) ? (int)$_POST['total_marks'] : 100;
-    $allowed_types = ['mock', 'practice', 'past_paper'];
+    $name             = trim((string)($_POST['name'] ?? ''));
+    $product_type     = trim((string)($_POST['product_type'] ?? 'mock'));
+    $allowed_types    = ['mock', 'practice', 'past_paper'];
     if (!in_array($product_type, $allowed_types, true)) $product_type = 'mock';
-    $description  = trim((string)($_POST['description'] ?? ''));
-    $sets         = ($product_type === 'mock') ? (int)($_POST['sets'] ?? 0) : 1;
-    $price                 = isset($_POST['price']) ? (float)$_POST['price'] : 0.0;
-    $exam_body_id = isset($_POST['exam_body_id']) ? (int)$_POST['exam_body_id'] : 0;
+    $description      = trim((string)($_POST['description'] ?? ''));
+    $exam_body_id     = isset($_POST['exam_body_id']) ? (int)$_POST['exam_body_id'] : 0;
+    $price            = isset($_POST['price']) ? (float)$_POST['price'] : 0.0;
+    $sets             = ($product_type === 'mock') ? (int)($_POST['sets'] ?? 0) : 1;
+    $duration_minutes = ($product_type !== 'practice') ? (int)($_POST['duration_minutes'] ?? 0) : 0;
+    $total_questions  = ($product_type !== 'practice') ? (int)($_POST['total_questions'] ?? 0) : 0;
+    $total_marks      = ($product_type !== 'practice') ? (int)($_POST['total_marks'] ?? 0) : 0;
 
-    // Validate
     if ($name === '' || mb_strlen($name, 'UTF-8') > 120) {
         $err = 'Product name is required and must be under 120 characters.';
-    } elseif ($duration_minutes <= 0) {
-        $err = 'Duration must be greater than 0.';
-    } elseif ($total_questions <= 0) {
-        $err = 'Total questions must be greater than 0.';
-    } elseif ($total_marks <= 0) {
-        $err = 'Total marks must be greater than 0.';
-    } elseif ($product_type === "mock" && $sets <= 0) {
-        $err = 'Sets must be greater than 0 for mock exam.';
-    } elseif ($price < 0) {
-        $err = 'Price cannot be negative.';
     } elseif ($exam_body_id <= 0) {
         $err = 'Exam body is required.';
+    } elseif ($price < 0) {
+        $err = 'Price cannot be negative.';
+    } elseif ($product_type !== 'practice' && $duration_minutes <= 0) {
+        $err = 'Duration must be greater than 0.';
+    } elseif ($product_type !== 'practice' && $total_questions <= 0) {
+        $err = 'Total questions must be greater than 0.';
+    } elseif ($product_type !== 'practice' && $total_marks <= 0) {
+        $err = 'Total marks must be greater than 0.';
+    } elseif ($product_type === 'mock' && $sets <= 0) {
+        $err = 'Sets must be greater than 0 for mock exam.';
     } else {
-        $conn->begin_transaction();
+        mysqli_begin_transaction($conn);
         try {
-            // Insert product
-            $stmt = $conn->prepare("
-                INSERT INTO products
-                    (name, product_type, exam_body_id, description, duration_minutes, total_questions, total_marks, sets, price, status)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')
-            ");
-            $stmt->bind_param(
-                "ssisiiiid",
-                $name,
-                $product_type,
-                $exam_body_id,
-                $description,
-                $duration_minutes,
-                $total_questions,
-                $total_marks,
-                $sets,
-                $price
+            $stmt = mysqli_prepare($conn,
+                "INSERT INTO products
+                     (name, product_type, exam_body_id, description, duration_minutes, total_questions, total_marks, sets, price, status)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')"
             );
-            $stmt->execute();
-            $product_id = (int)$conn->insert_id;
-            $stmt->close();
-
-            $conn->commit();
+            mysqli_stmt_bind_param(
+                $stmt, "ssisiiiid",
+                $name, $product_type, $exam_body_id, $description,
+                $duration_minutes, $total_questions, $total_marks, $sets, $price
+            );
+            mysqli_stmt_execute($stmt);
+            $product_id = (int)mysqli_insert_id($conn);
+            mysqli_stmt_close($stmt);
+            mysqli_commit($conn);
             header("Location: product-details.php?product_id=" . $product_id . "&ok=1");
             exit;
-
         } catch (Throwable $e) {
-            $conn->rollback();
+            mysqli_rollback($conn);
             $err = 'Failed to create product. Please try again.';
         }
     }
@@ -94,7 +85,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['submit'] ?? '') === 'add_p
     <div class="row">
         <div class="col-md-6">
 
-            <h4 class="mb-3">Add Product</h4>
+            <div class="qs-list-header mb-3">
+                <div class="qs-list-title">Add Product</div>
+                <a href="products.php" class="btn-qs-sm">← Back</a>
+            </div>
 
             <?php if ($err !== ''): ?>
                 <div class="alert alert-danger"><?= htmlspecialchars($err, ENT_QUOTES, 'UTF-8') ?></div>
@@ -133,19 +127,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['submit'] ?? '') === 'add_p
                     <div class="form-check form-check-inline">
                         <input class="form-check-input" type="radio" name="product_type" value="mock" id="type_mock"
                             <?= (($_POST['product_type'] ?? 'mock') === 'mock') ? 'checked' : '' ?>
-                            onchange="document.getElementById('sets_row').classList.remove('d-none')">
+                            onchange="toggleProductType('mock')">
                         <label class="form-check-label" for="type_mock">Mock Exam</label>
                     </div>
                     <div class="form-check form-check-inline">
                         <input class="form-check-input" type="radio" name="product_type" value="practice" id="type_practice"
                             <?= (($_POST['product_type'] ?? '') === 'practice') ? 'checked' : '' ?>
-                            onchange="document.getElementById('sets_row').classList.add('d-none')">
+                            onchange="toggleProductType('practice')">
                         <label class="form-check-label" for="type_practice">Practice</label>
                     </div>
                     <div class="form-check form-check-inline">
                         <input class="form-check-input" type="radio" name="product_type" value="past_paper" id="type_past_paper"
                             <?= (($_POST['product_type'] ?? '') === 'past_paper') ? 'checked' : '' ?>
-                            onchange="document.getElementById('sets_row').classList.add('d-none')">
+                            onchange="toggleProductType('past_paper')">
                         <label class="form-check-label" for="type_past_paper">Past Paper</label>
                     </div>
                 </div>
@@ -156,24 +150,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['submit'] ?? '') === 'add_p
                            value="<?= (int)($_POST['sets'] ?? 1) ?>">
                 </div>
 
-                <div class="mb-3">
-                    <label class="form-label">Duration (minutes)</label>
-                    <input type="number" name="duration_minutes" class="form-control" min="1" required
-                           value="<?= (int)($_POST['duration_minutes'] ?? 60) ?>">
+                <div id="exam_fields_row" <?= (($_POST['product_type'] ?? 'mock') === 'practice') ? 'class="d-none"' : '' ?>>
+                    <div class="mb-3">
+                        <label class="form-label">Duration (minutes)</label>
+                        <input type="number" name="duration_minutes" class="form-control" min="1"
+                               value="<?= (int)($_POST['duration_minutes'] ?? 60) ?>">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Total Questions</label>
+                        <input type="number" name="total_questions" class="form-control" min="1"
+                               value="<?= (int)($_POST['total_questions'] ?? 50) ?>">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Total Marks</label>
+                        <input type="number" name="total_marks" class="form-control" min="1"
+                            value="<?= (int)($_POST['total_marks'] ?? 100) ?>">
+                    </div>
                 </div>
 
-                <div class="mb-3">
-                    <label class="form-label">Total Questions</label>
-                    <input type="number" name="total_questions" class="form-control" min="1" required
-                           value="<?= (int)($_POST['total_questions'] ?? 50) ?>">
-                </div>
-
-                <div class="mb-3">
-                    <label class="form-label">Total Marks</label>
-                    <input type="number" name="total_marks" class="form-control" min="1" required
-                        value="<?= (int)($_POST['total_marks'] ?? 100) ?>">
-                </div>
-                
                 <div class="mb-3">
                     <label class="form-label">Price (₦)</label>
                     <input type="number" name="price" class="form-control" min="0" step="0.01" required
@@ -181,7 +175,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['submit'] ?? '') === 'add_p
                 </div>
 
                 <button type="submit" name="submit" value="add_product"
-                        class="btn" style="background:var(--accent);color:#000;">
+                        class="btn-qs-gold">
                     Add Product
                 </button>
 
@@ -189,6 +183,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['submit'] ?? '') === 'add_p
         </div>
     </div>
 </div>
+
+<script>
+function toggleProductType(type) {
+    document.getElementById('sets_row').classList.toggle('d-none', type !== 'mock');
+    document.getElementById('exam_fields_row').classList.toggle('d-none', type === 'practice');
+}
+</script>
 
 <?php include("inc/footer.php"); ?>
 </body>
