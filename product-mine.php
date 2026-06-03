@@ -171,11 +171,6 @@ mysqli_stmt_close($stmt);
                         <?php if ($row['exam_body']): ?>
                             <div class="mp-meta"><?= htmlspecialchars($row['exam_body'], ENT_QUOTES, 'UTF-8') ?></div>
                         <?php endif; ?>
-                        <div class="mp-meta mb-2">
-                            <?= $row['total_questions'] ?> Qs &bull;
-                            <?= $row['duration_minutes'] ?> min &bull;
-                            <?= $row['total_marks'] ?> marks
-                        </div>
                         <div class="<?= $exp_cls ?>">
                             Expires: <?= date('d M Y', strtotime($row['expires_at'])) ?>
                             <?= $days <= 7 ? " &bull; {$days}d left" : '' ?>
