@@ -112,31 +112,6 @@ if(isset($_POST['submit']) && $_POST['submit'] === "student_registration"){
             if($stmt->execute()){
                 $student_id = $stmt->insert_id;
 
-                // Add notifications
-                $stmt_notif = $conn->prepare("INSERT INTO `notification`(`user_id`,`notification`,`date`,`time`) VALUES (?, ?, ?, ?)");
-                $message1 = "Thanks for choosing us. We hope you achieve your goal here.";
-                $message2 = "You have one free trial set.";
-                $stmt_notif->bind_param("isss", $student_id, $message1, $date, $time);
-                $stmt_notif->execute();
-                $stmt_notif->bind_param("isss", $student_id, $message2, $date, $time);
-                $stmt_notif->execute();
-                $stmt_notif->close();
-
-                // Add free demo set
-                // $stmt_demo = $conn->prepare("INSERT INTO `purchased_products`(`user_id`,`product_id`,`amount`,`remaining_sets`,`txn_no`,`txn_mode`,`refrence_no`,`purchased_on`,`purchased_at`,`mobile`,`status`,`created_by`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)");
-                // $product_id = 11;
-                // $amount = 0;
-                // $remaining_sets = 1;
-                // $txn_no = $student_id;
-                // $txn_mode = 'free';
-                // $refrence_no = "FREE-DEMO.$student_id";
-                // $mobile = '0000000000';
-                // $status = 'active';
-                // $created_by = 1;
-                // $stmt_demo->bind_param("iiiisssssssi",$student_id,$product_id,$amount,$remaining_sets,$txn_no,$txn_mode,$refrence_no,$date,$time,$mobile,$status,$created_by);
-                // $stmt_demo->execute();
-                // $stmt_demo->close();
-
                 header("Location: login.php?msg=" . urlencode("Account created successfully. Please login.")); 
                 exit;
             } else {
