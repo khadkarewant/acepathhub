@@ -83,7 +83,10 @@ if (has_role(ROLE_ADMIN)) {
                     <td><?= $p['product_type'] === 'mock' ? $p['sets'] : '—' ?></td>
                     <td>
                         <?php if ($p['product_type'] === 'practice'): ?>
-                            —
+                            <?= number_format((float)$p['price_1m'], 2) ?> /
+                            <?= number_format((float)$p['price_3m'], 2) ?> /
+                            <?= number_format((float)$p['price_6m'], 2) ?> /
+                            <?= number_format((float)$p['price_12m'], 2) ?>
                         <?php else: ?>
                             ₦<?= number_format((float)$p['price'], 2) ?>
                         <?php endif; ?>
