@@ -107,7 +107,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['submit'] ?? '') === 'assig
     } else {
         // Fetch product to verify it's active and get type/sets/price
         $stmt = mysqli_prepare($conn,
-            "SELECT id, product_type, price, sets
+            "SELECT id, product_type, price, price_1m, price_3m, price_6m, price_12m, sets
             FROM products
             WHERE id = ? AND status = 'active'
             LIMIT 1"
@@ -139,7 +139,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['submit'] ?? '') === 'assig
         
 
         if ($err === '') {
-            $amount = max(0.0, (float)$prod['price'] - $discount);
+            if ($prod['product_type'] === 'practice') {
+                $price_col_map = [1 => 'price_1m', 3 => 'price_3m', 6 => 'price_6m', 12 => 'price_12m'];
+                $base_price = (float)($prod[$price_col_map[$duration]] ?? 0.0);
+            } else {
+                $base_price = (float)$prod['price'];
+            }
+            $amount = max(0.0, $base_price - $discount);
+        
             $today  = date('Y-m-d');
 
             // Compute per-type values
@@ -266,9 +273,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['submit'] ?? '') === 'assig
                                 data-type="<?= htmlspecialchars($p['product_type'], ENT_QUOTES, 'UTF-8') ?>"
                                 data-price="<?= (float)$p['price'] ?>"
                                 data-exam-body="<?= (int)$p['exam_body_id'] ?>">
-                            
+
                                 <?= htmlspecialchars($p['name'], ENT_QUOTES, 'UTF-8') ?>
-                                (₦<?= number_format((float)$p['price'], 2) ?>)
+                                <?= $p['product_type'] !== 'practice' ? '(₦' . number_format((float)$p['price'], 2) . ')' : '' ?>
                             </option>
                         <?php endforeach; ?>
                         <?php if ($current_type !== '') echo '</optgroup>'; ?>

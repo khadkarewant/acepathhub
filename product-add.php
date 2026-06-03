@@ -24,7 +24,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['submit'] ?? '') === 'add_p
     if (!in_array($product_type, $allowed_types, true)) $product_type = 'mock';
     $description      = trim((string)($_POST['description'] ?? ''));
     $exam_body_id     = isset($_POST['exam_body_id']) ? (int)$_POST['exam_body_id'] : 0;
-    $price            = isset($_POST['price']) ? (float)$_POST['price'] : 0.0;
+
+    $price            = ($product_type !== 'practice') ? (float)($_POST['price'] ?? 0.0) : 0.0;
+    $price_1m         = ($product_type === 'practice') ? (float)($_POST['price_1m'] ?? 0.0) : null;
+    $price_3m         = ($product_type === 'practice') ? (float)($_POST['price_3m'] ?? 0.0) : null;
+    $price_6m         = ($product_type === 'practice') ? (float)($_POST['price_6m'] ?? 0.0) : null;
+    $price_12m        = ($product_type === 'practice') ? (float)($_POST['price_12m'] ?? 0.0) : null;
+        
     $sets             = ($product_type === 'mock') ? (int)($_POST['sets'] ?? 0) : 1;
     $duration_minutes = ($product_type !== 'practice') ? (int)($_POST['duration_minutes'] ?? 0) : 0;
     $total_questions  = ($product_type !== 'practice') ? (int)($_POST['total_questions'] ?? 0) : 0;
@@ -34,8 +40,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['submit'] ?? '') === 'add_p
         $err = 'Product name is required and must be under 120 characters.';
     } elseif ($exam_body_id <= 0) {
         $err = 'Exam body is required.';
-    } elseif ($price < 0) {
+    } elseif ($product_type !== 'practice' && $price < 0) {
         $err = 'Price cannot be negative.';
+    } elseif ($product_type === 'practice' && ($price_1m < 0 || $price_3m < 0 || $price_6m < 0 || $price_12m < 0)) {
+        $err = 'Prices cannot be negative.';
+        
     } elseif ($product_type !== 'practice' && $duration_minutes <= 0) {
         $err = 'Duration must be greater than 0.';
     } elseif ($product_type !== 'practice' && $total_questions <= 0) {
@@ -49,14 +58,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['submit'] ?? '') === 'add_p
         try {
             $stmt = mysqli_prepare($conn,
                 "INSERT INTO products
-                     (name, product_type, exam_body_id, description, duration_minutes, total_questions, total_marks, sets, price, status)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')"
+                    (name, product_type, exam_body_id, description, duration_minutes, total_questions, total_marks, sets, price, price_1m, price_3m, price_6m, price_12m, status)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')"
             );
             mysqli_stmt_bind_param(
-                $stmt, "ssisiiiid",
+                $stmt, "ssisiiiidddddd",
                 $name, $product_type, $exam_body_id, $description,
-                $duration_minutes, $total_questions, $total_marks, $sets, $price
+                $duration_minutes, $total_questions, $total_marks, $sets,
+                $price, $price_1m, $price_3m, $price_6m, $price_12m
             );
+        
             mysqli_stmt_execute($stmt);
             $product_id = (int)mysqli_insert_id($conn);
             mysqli_stmt_close($stmt);
@@ -168,10 +179,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['submit'] ?? '') === 'add_p
                     </div>
                 </div>
 
-                <div class="mb-3">
+                <div class="mb-3" id="price_single_row" <?= (($_POST['product_type'] ?? 'mock') === 'practice') ? 'class="d-none"' : '' ?>>
                     <label class="form-label">Price (₦)</label>
-                    <input type="number" name="price" class="form-control" min="0" step="0.01" required
-                           value="<?= htmlspecialchars($_POST['price'] ?? '0.00', ENT_QUOTES, 'UTF-8') ?>">
+                    <input type="number" name="price" class="form-control" min="0" step="0.01"
+                        value="<?= htmlspecialchars($_POST['price'] ?? '0.00', ENT_QUOTES, 'UTF-8') ?>">
+                </div>
+
+                <div id="price_practice_row" <?= (($_POST['product_type'] ?? 'mock') !== 'practice') ? 'class="d-none"' : '' ?>>
+                    <div class="mb-3">
+                        <label class="form-label">Price — 1 Month (₦)</label>
+                        <input type="number" name="price_1m" class="form-control" min="0" step="0.01"
+                            value="<?= htmlspecialchars($_POST['price_1m'] ?? '0.00', ENT_QUOTES, 'UTF-8') ?>">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Price — 3 Months (₦)</label>
+                        <input type="number" name="price_3m" class="form-control" min="0" step="0.01"
+                            value="<?= htmlspecialchars($_POST['price_3m'] ?? '0.00', ENT_QUOTES, 'UTF-8') ?>">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Price — 6 Months (₦)</label>
+                        <input type="number" name="price_6m" class="form-control" min="0" step="0.01"
+                            value="<?= htmlspecialchars($_POST['price_6m'] ?? '0.00', ENT_QUOTES, 'UTF-8') ?>">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Price — 12 Months (₦)</label>
+                        <input type="number" name="price_12m" class="form-control" min="0" step="0.01"
+                            value="<?= htmlspecialchars($_POST['price_12m'] ?? '0.00', ENT_QUOTES, 'UTF-8') ?>">
+                    </div>
                 </div>
 
                 <button type="submit" name="submit" value="add_product"
@@ -188,6 +222,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['submit'] ?? '') === 'add_p
 function toggleProductType(type) {
     document.getElementById('sets_row').classList.toggle('d-none', type !== 'mock');
     document.getElementById('exam_fields_row').classList.toggle('d-none', type === 'practice');
+    document.getElementById('price_single_row').classList.toggle('d-none', type === 'practice');
+    document.getElementById('price_practice_row').classList.toggle('d-none', type !== 'practice');
 }
 </script>
 
