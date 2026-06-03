@@ -32,7 +32,18 @@ $updated = isset($_GET['updated']) && $_GET['updated'] === '1';
 $deleted = isset($_GET['deleted']) && $_GET['deleted'] === '1';
 $error   = $_GET['error'] ?? '';
 
-$stmt = mysqli_prepare($conn, "SELECT id, name FROM topics WHERE subject_id = ? ORDER BY id ASC");
+$stmt = mysqli_prepare($conn,
+    "SELECT t.id, t.name,
+            COUNT(DISTINCT q.id) AS total_questions,
+            SUM(CASE WHEN qs.verified = 1 AND qs.status = 'published' THEN 1 ELSE 0 END) AS published_questions
+     FROM topics t
+     LEFT JOIN question_sets qs ON qs.topic_id = t.id
+     LEFT JOIN questions q ON q.question_set_id = qs.id
+     WHERE t.subject_id = ?
+     GROUP BY t.id, t.name
+     ORDER BY t.id ASC"
+);
+
 mysqli_stmt_bind_param($stmt, "i", $subject_id);
 mysqli_stmt_execute($stmt);
 $result = mysqli_stmt_get_result($stmt);
@@ -81,6 +92,7 @@ mysqli_stmt_close($stmt);
             <tr>
                 <th>S.N</th>
                 <th>Name</th>
+                <th>MCQs (Published/Total)</th>
                 <th>Action</th>
             </tr>
         </thead>
@@ -91,6 +103,7 @@ mysqli_stmt_close($stmt);
             <tr>
                 <td><?= $sn++ ?></td>
                 <td><?= htmlspecialchars($row['name'], ENT_QUOTES, 'UTF-8') ?></td>
+                <td><?= (int)$row['published_questions'] ?>/<?= (int)$row['total_questions'] ?></td>
                 <td>
                     <?php if (has_role(ROLE_ADMIN)): ?>
                         <a href="question-set-list.php?topic_id=<?= (int)$row['id'] ?>" class="btn-qs-sm">View MCQs</a>
