@@ -34,7 +34,7 @@ $stmt = mysqli_prepare($conn,
     "SELECT user_id, username, first_name, middle_name, last_name,
         email, phone, pin, dob, gender, country, city,
         postal_code, role, status, last_login,
-        referral_code, is_session, session_token
+        referral_code, is_session, session_token, is_blocked
     FROM users
     WHERE user_id = ?
     LIMIT 1"
@@ -56,6 +56,12 @@ if (!$result || mysqli_num_rows($result) !== 1) {
 
 $row = mysqli_fetch_assoc($result);
 mysqli_stmt_close($stmt);
+
+if ((int)$row['is_blocked'] === 1) {
+    session_destroy();
+    header("Location: login.php?msg=Your+account+has+been+blocked");
+    exit;
+}
 
 // Check if session is valid (single-device login)
 if ((int)$row['is_session'] !== 1 || !isset($_SESSION['token']) || !hash_equals($row['session_token'], $_SESSION['token'])) {
