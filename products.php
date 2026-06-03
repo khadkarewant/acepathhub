@@ -7,26 +7,30 @@ require_once __DIR__ . "/src/db/session.php";
 require_role(ROLE_ADMIN, ROLE_STUDENT);
 
 if (has_role(ROLE_ADMIN)) {
-    $stmt = $conn->prepare("
-        SELECT id, name, product_type, duration_minutes, total_questions,
-               sets, price, status
+    $stmt = mysqli_prepare($conn,
+        "SELECT id, name, product_type, duration_minutes, total_questions,
+                sets, price, price_1m, price_3m, price_6m, price_12m, status
         FROM products
-        ORDER BY product_type ASC, name ASC
-    ");
-    $stmt->execute();
-    $products = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-    $stmt->close();
+        ORDER BY product_type ASC, name ASC"
+        );
+    mysqli_stmt_execute($stmt);
+    $res      = mysqli_stmt_get_result($stmt);
+    $products = mysqli_fetch_all($res, MYSQLI_ASSOC);
+    mysqli_free_result($res);
+    mysqli_stmt_close($stmt);
 } else {
-    $stmt = $conn->prepare("
-        SELECT id, name, product_type, duration_minutes, total_questions,
-               sets, price
+    $stmt = mysqli_prepare($conn,
+        "SELECT id, name, product_type, duration_minutes, total_questions,
+                sets, price, price_1m, price_3m, price_6m, price_12m
         FROM products
         WHERE status = 'active'
-        ORDER BY product_type ASC, name ASC
-    ");
-    $stmt->execute();
-    $products = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-    $stmt->close();
+        ORDER BY product_type ASC, name ASC"
+    );
+    mysqli_stmt_execute($stmt);
+    $res      = mysqli_stmt_get_result($stmt);
+    $products = mysqli_fetch_all($res, MYSQLI_ASSOC);
+    mysqli_free_result($res);
+    mysqli_stmt_close($stmt);
 
     $mock_products      = array_filter($products, fn($p) => $p['product_type'] === 'mock');
     $practice_products  = array_filter($products, fn($p) => $p['product_type'] === 'practice');
@@ -74,10 +78,16 @@ if (has_role(ROLE_ADMIN)) {
                     <td><?= $p['id'] ?></td>
                     <td><?= htmlspecialchars($p['name'], ENT_QUOTES, 'UTF-8') ?></td>
                     <td><?= ucfirst(str_replace('_', ' ', $p['product_type'])) ?></td>
-                    <td><?= $p['duration_minutes'] ?> min</td>
-                    <td><?= $p['total_questions'] ?></td>
+                    <td><?= $p['product_type'] !== 'practice' ? $p['duration_minutes'] . ' min' : '—' ?></td>
+                    <td><?= $p['product_type'] !== 'practice' ? $p['total_questions'] : '—' ?></td>
                     <td><?= $p['product_type'] === 'mock' ? $p['sets'] : '—' ?></td>
-                    <td>₦<?= number_format((float)$p['price'], 2) ?></td>
+                    <td>
+                        <?php if ($p['product_type'] === 'practice'): ?>
+                            —
+                        <?php else: ?>
+                            ₦<?= number_format((float)$p['price'], 2) ?>
+                        <?php endif; ?>
+                    </td>
                     <td>
                         <span class="badge <?= $p['status'] === 'active' ? 'bg-success' : 'bg-secondary' ?>">
                             <?= ucfirst($p['status']) ?>
@@ -135,12 +145,9 @@ if (has_role(ROLE_ADMIN)) {
                         <h6 class="card-title" style="color:var(--accent);">
                             <?= htmlspecialchars($p['name'], ENT_QUOTES, 'UTF-8') ?>
                         </h6>
-                        <p class="mb-1 small text-muted">
-                            <?= $p['duration_minutes'] ?> min &bull;
-                            <?= $p['total_questions'] ?> questions
-                        </p>
+                        <p class="mb-1 small text-muted">Practice Product</p>
                         <p class="mb-3" style="color:var(--accent);font-weight:600;">
-                            ₦<?= number_format((float)$p['price'], 2) ?>
+                            From ₦<?= number_format((float)min(array_filter([$p['price_1m'], $p['price_3m'], $p['price_6m'], $p['price_12m']])), 2) ?>
                         </p>
                         <a href="product-details.php?product_id=<?= $p['id'] ?>"
                            class="btn btn-sm btn-outline-secondary me-1">Details</a>
