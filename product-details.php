@@ -32,6 +32,17 @@ if (!$product) {
     exit;
 }
 
+// Fetch subjects under this product's exam body
+$stmt = mysqli_prepare($conn,
+    "SELECT id, name FROM subjects WHERE exam_body_id = ? ORDER BY name ASC"
+);
+mysqli_stmt_bind_param($stmt, "i", $product['exam_body_id']);
+mysqli_stmt_execute($stmt);
+$res      = mysqli_stmt_get_result($stmt);
+$subjects = mysqli_fetch_all($res, MYSQLI_ASSOC);
+mysqli_free_result($res);
+mysqli_stmt_close($stmt);
+
 if (has_role(ROLE_STUDENT) && $product['status'] !== 'active') {
     header("Location: products.php");
     exit;
@@ -63,9 +74,9 @@ $ok = isset($_GET['ok']);
     <?php endif; ?>
 
     <div class="table-responsive mb-3">
-        <table class="table">
-            <tbody>
-                <tr><th>Type</th><td><?= ucfirst(str_replace('_', ' ', $product_type)) ?></td></tr>
+    <table class="table" style="max-width:600px;">
+        <tbody>
+            <tr><th style="width:160px;">Type</th><td><?= ucfirst(str_replace('_', ' ', $product_type)) ?></td></tr>
                 <?php if ($product_type !== 'practice'): ?>
                 <tr><th>Duration</th><td><?= $product['duration_minutes'] ?> minutes</td></tr>
                 <tr><th>Total Questions</th><td><?= $product['total_questions'] ?></td></tr>
@@ -100,6 +111,16 @@ $ok = isset($_GET['ok']);
                         <span class="badge <?= $product['status'] === 'active' ? 'bg-success' : 'bg-secondary' ?>">
                             <?= ucfirst($product['status']) ?>
                         </span>
+                    </td>
+                </tr>
+                <tr>
+                    <th>Subjects</th>
+                    <td>
+                        <?php if (!empty($subjects)): ?>
+                            <?= htmlspecialchars(implode(', ', array_column($subjects, 'name')), ENT_QUOTES, 'UTF-8') ?>
+                        <?php else: ?>
+                            —
+                        <?php endif; ?>
                     </td>
                 </tr>
             </tbody>
