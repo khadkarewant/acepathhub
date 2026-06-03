@@ -145,7 +145,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['submit'] ?? '') === 'assig
             } else {
                 $base_price = (float)$prod['price'];
             }
-            $amount = max(0.0, $base_price - $discount);
+            
+            $amount = ($txn_mode === 'free') ? 0.0 : max(0.0, $base_price - $discount);
         
             $today  = date('Y-m-d');
 
