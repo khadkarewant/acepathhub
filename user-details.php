@@ -99,6 +99,7 @@ if (!$row) {
             <form method="POST" action="user-block.php" style="display:inline;">
                 <?= csrf_input() ?>
                 <input type="hidden" name="user_id" value="<?= $target_user_id ?>">
+                <input type="hidden" name="action" value="unblock">
                 <button type="submit" class="btn-qs-gold"
                         onclick="return confirm('Unblock this user?')">
                     Unblock
@@ -108,6 +109,7 @@ if (!$row) {
             <form method="POST" action="user-block.php" style="display:inline;">
                 <?= csrf_input() ?>
                 <input type="hidden" name="user_id" value="<?= $target_user_id ?>">
+                <input type="hidden" name="action" value="block">
                 <button type="submit" class="btn-qs-danger"
                         onclick="return confirm('Block this user?')">
                     Block
