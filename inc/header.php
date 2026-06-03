@@ -98,20 +98,6 @@
                 <a href="sales-stats.php"><i class="fa-solid fa-chart-line"></i> Sales Stats</a>
             </div>
 
-            <div class="side-links">
-                <a href="javascript:void(0)" class="menu-toggle">
-                    <i class="fa-solid fa-gear"></i> Settings &triangledown;
-                </a>
-                <div class="side-submenu">
-                    <div class="side-sublinks">
-                        <a href="block-list.php"><i class="fa-solid fa-ban"></i> Block List</a>
-                    </div>
-                    <div class="side-sublinks">
-                        <a href="admin-chat-reports.php"><i class="fa-solid fa-comments"></i> Chat Reports</a>
-                    </div>
-                </div>
-            </div>
-
         <?php endif; ?>
 
         <!-- DATA ENTRY MENU -->
@@ -119,9 +105,6 @@
 
             <div class="side-links">
                 <a href="exam-body-list.php"><i class="fa-solid fa-plus"></i> Add MCQ</a>
-            </div>
-            <div class="side-links">
-                <a href="unverified-mcqs.php"><i class="fa-solid fa-circle-exclamation"></i> Unverified MCQs</a>
             </div>
 
         <?php endif; ?>
@@ -134,12 +117,6 @@
             </div>
             <div class="side-links">
                 <a href="product-mine.php"><i class="fa-solid fa-star"></i> My Products</a>
-            </div>
-            <div class="side-links">
-                <a href="downloads.php"><i class="fa-solid fa-download"></i> Downloads</a>
-            </div>
-            <div class="side-links">
-                <a href="leaderboard.php"><i class="fa-solid fa-trophy"></i> Leaderboard</a>
             </div>
             <!-- <div class="side-links">
                 <a href="user-stats.php"><i class="fa-solid fa-chart-simple"></i> My Stats</a>
