@@ -102,6 +102,8 @@ $stmt = mysqli_prepare($conn,
             COUNT(DISTINCT pa.question_id) AS answered,
             COALESCE(SUM(CASE WHEN pa.is_correct = 1 THEN 1 ELSE 0 END), 0) AS correct
      FROM subjects s
+     JOIN purchased_product_subjects pps
+            ON pps.subject_id = s.id AND pps.purchased_id = ?
      LEFT JOIN topics t
             ON t.subject_id = s.id
      LEFT JOIN question_sets qs
@@ -116,7 +118,8 @@ $stmt = mysqli_prepare($conn,
      GROUP BY s.id, s.name
      ORDER BY s.id ASC"
 );
-mysqli_stmt_bind_param($stmt, 'iii', $user_id, $purchased_id, $purchase['exam_body_id']);
+mysqli_stmt_bind_param($stmt, 'iiii', $purchased_id, $user_id, $purchased_id, $purchase['exam_body_id']);
+
 mysqli_stmt_execute($stmt);
 $r        = mysqli_stmt_get_result($stmt);
 $subjects = mysqli_fetch_all($r, MYSQLI_ASSOC);
