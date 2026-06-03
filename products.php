@@ -150,7 +150,10 @@ if (has_role(ROLE_ADMIN)) {
                         </h6>
                         <p class="mb-1 small text-muted">Practice Product</p>
                         <p class="mb-3" style="color:var(--accent);font-weight:600;">
-                            From ₦<?= number_format((float)min(array_filter([$p['price_1m'], $p['price_3m'], $p['price_6m'], $p['price_12m']])), 2) ?>
+                            <?php
+                            $prices = array_filter([$p['price_1m'], $p['price_3m'], $p['price_6m'], $p['price_12m']], fn($v) => $v !== null && $v > 0);
+                            echo !empty($prices) ? 'From ₦' . number_format((float)min($prices), 2) : 'Price on request';
+                            ?>
                         </p>
                         <a href="product-details.php?product_id=<?= $p['id'] ?>"
                            class="btn btn-sm btn-outline-secondary me-1">Details</a>
