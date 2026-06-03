@@ -1420,3 +1420,9 @@ label { font-weight: 700; }
 .lb-rank-3        { color: #cd7f32; }
 .lb-rank-top10    { color: var(--accent); }
 .lb-rank-default  { color: var(--muted); }
+
+input[type="file"] {
+    background-color: var(--input-bg);
+    color: var(--text);
+    border-color: var(--border);
+}

@@ -113,13 +113,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && has_role(ROLE_ADMIN)) {
             — <?= htmlspecialchars($subject['name'], ENT_QUOTES, 'UTF-8') ?>
         </div>
         <?php if (has_role(ROLE_ADMIN)): ?>
-            <a href="subject-edit.php?id=<?= $id ?>" class="btn-qs-sm">Edit</a>
-            <form method="POST" action="subject-delete.php" style="display:inline;"
-                  onsubmit="return confirm('Delete this subject?');">
-                <?= csrf_input() ?>
-                <input type="hidden" name="id" value="<?= $id ?>">
-                <button type="submit" class="btn-qs-danger">Delete</button>
-            </form>
+            <div class="d-flex gap-2 align-items-center">
+                <a href="subject-edit.php?id=<?= $id ?>" class="btn-qs-sm">Edit</a>
+                <form method="POST" action="subject-delete.php" style="display:inline;"
+                    onsubmit="return confirm('Delete this subject?');">
+                    <?= csrf_input() ?>
+                    <input type="hidden" name="id" value="<?= $id ?>">
+                    <button type="submit" class="btn-qs-danger">Delete</button>
+                </form>
+            </div>
         <?php endif; ?>
     </div>
 
