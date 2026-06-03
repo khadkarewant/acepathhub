@@ -123,7 +123,7 @@ mysqli_stmt_close($stmt);
             </tr>
         <?php endforeach;
         else: ?>
-            <tr><td colspan="3">No topics found.</td></tr>
+            <tr><td colspan="4">No topics found.</td></tr>
         <?php endif; ?>
         </tbody>
     </table>
