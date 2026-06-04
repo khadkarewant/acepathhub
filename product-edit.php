@@ -132,6 +132,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['submit'] ?? '') === 'updat
 
             <div class="qs-list-header mb-3">
                 <div class="qs-list-title">Update Product</div>
+            </div>
+            
+            <div class="mb-3">
                 <a href="product-details.php?product_id=<?= $product_id ?>" class="btn-qs-sm">← Back</a>
             </div>
 

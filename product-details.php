@@ -66,6 +66,8 @@ $ok = isset($_GET['ok']);
 
     <div class="qs-list-header mb-3">
         <div class="qs-list-title"><?= htmlspecialchars($product['name'], ENT_QUOTES, 'UTF-8') ?></div>
+    </div>
+    <div class="mb-3">
         <a href="products.php" class="btn-qs-sm">← Back</a>
     </div>
 

@@ -108,6 +108,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <div class="qs-list-header">
         <div class="qs-list-title">Edit Question #<?= $question_id ?></div>
+    </div>
+    
+    <div class="mb-3">
         <a href="mcq-details.php?question_set_id=<?= $question_set_id ?>" class="btn-qs-sm">← Back</a>
     </div>
 
