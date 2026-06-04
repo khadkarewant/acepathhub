@@ -98,6 +98,7 @@ if ($topic_id > 0) {
             JOIN questions q       ON q.id             = pa.question_id
             JOIN question_sets qs  ON qs.id            = q.question_set_id
             JOIN purchased_products pp ON pp.user_id   = pa.user_id
+                                      AND pp.id        = pa.purchased_id
                                       AND pp.product_id = ?
                                       AND pp.status     = 'active'
             WHERE qs.topic_id = ?
@@ -125,6 +126,7 @@ if ($topic_id > 0) {
             JOIN question_sets qs  ON qs.id            = q.question_set_id
             JOIN topics t          ON t.id             = qs.topic_id
             JOIN purchased_products pp ON pp.user_id   = pa.user_id
+                                      AND pp.id        = pa.purchased_id
                                       AND pp.product_id = ?
                                       AND pp.status     = 'active'
             WHERE t.subject_id   = ?
