@@ -34,7 +34,7 @@ if (!$product) {
 
 // Fetch subjects under this product's exam body
 $stmt = mysqli_prepare($conn,
-    "SELECT id, name FROM subjects WHERE exam_body_id = ? ORDER BY name ASC"
+    "SELECT id, name, syllabus_path FROM subjects WHERE exam_body_id = ? ORDER BY name ASC"
 );
 mysqli_stmt_bind_param($stmt, "i", $product['exam_body_id']);
 mysqli_stmt_execute($stmt);
@@ -128,7 +128,21 @@ $ok = isset($_GET['ok']);
             </tbody>
         </table>
     </div>
-
+    <?php if (has_role(ROLE_STUDENT) && !empty($subjects)): ?>
+        <div class="mb-4">
+            <h6 style="color:var(--accent);">Syllabus</h6>
+            <div class="d-flex flex-wrap gap-2">
+                <?php foreach ($subjects as $s): ?>
+                    <?php if (!empty($s['syllabus_path']) && file_exists($s['syllabus_path'])): ?>
+                        <a href="<?= htmlspecialchars($s['syllabus_path'], ENT_QUOTES, 'UTF-8') ?>"
+                        target="_blank" class="btn-qs-sm">
+                            <?= htmlspecialchars($s['name'], ENT_QUOTES, 'UTF-8') ?> Syllabus
+                        </a>
+                    <?php endif; ?>
+                <?php endforeach; ?>
+            </div>
+        </div>
+    <?php endif; ?>
     <div class="mb-4 d-flex gap-2 flex-wrap">
         <?php if (has_role(ROLE_STUDENT)): ?>
             <a href="https://wa.me/2348169321558?text=<?= rawurlencode('I want to purchase: ' . $product['name'] . '. My username is: ' . $user['username']) ?>"
