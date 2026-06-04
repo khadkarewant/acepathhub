@@ -194,6 +194,8 @@ if ($topic_id > 0) $base_url .= "&topic_id={$topic_id}";
             </div>
             <div class="qs-list-title">🏆 Leaderboard</div>
         </div>
+    </div>
+    <div class="mb-3">
         <a href="<?= $topic_id > 0 
             ? "practice-topics.php?purchased_id={$purchased_id}&subject_id={$subject_id}" 
             : "practice-subject.php?purchased_id={$purchased_id}" ?>" class="btn-qs-sm">← Back</a>
