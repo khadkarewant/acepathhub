@@ -116,33 +116,31 @@ $ok = isset($_GET['ok']);
                     </td>
                 </tr>
                 <tr>
-                    <th>Subjects</th>
-                    <td>
-                        <?php if (!empty($subjects)): ?>
-                            <?= htmlspecialchars(implode(', ', array_column($subjects, 'name')), ENT_QUOTES, 'UTF-8') ?>
-                        <?php else: ?>
-                            —
-                        <?php endif; ?>
-                    </td>
-                </tr>
+                <th>Subjects</th>
+                <td>
+                    <?php if (!empty($subjects)): ?>
+                        <div class="d-flex flex-column gap-1">
+                            <?php foreach ($subjects as $s): ?>
+                                <div class="d-flex align-items-center gap-2">
+                                    <span><?= htmlspecialchars($s['name'], ENT_QUOTES, 'UTF-8') ?></span>
+                                    <?php if (!empty($s['syllabus_path']) && file_exists($s['syllabus_path'])): ?>
+                                        <a href="<?= htmlspecialchars($s['syllabus_path'], ENT_QUOTES, 'UTF-8') ?>"
+                                        target="_blank" class="btn-qs-sm" style="font-size:0.75rem;padding:2px 8px;">
+                                            Syllabus
+                                        </a>
+                                    <?php endif; ?>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php else: ?>
+                        —
+                    <?php endif; ?>
+                </td>
+            </tr>
             </tbody>
         </table>
     </div>
-    <?php if (has_role(ROLE_STUDENT) && !empty($subjects)): ?>
-        <div class="mb-4">
-            <h6 style="color:var(--accent);">Syllabus</h6>
-            <div class="d-flex flex-wrap gap-2">
-                <?php foreach ($subjects as $s): ?>
-                    <?php if (!empty($s['syllabus_path']) && file_exists($s['syllabus_path'])): ?>
-                        <a href="<?= htmlspecialchars($s['syllabus_path'], ENT_QUOTES, 'UTF-8') ?>"
-                        target="_blank" class="btn-qs-sm">
-                            <?= htmlspecialchars($s['name'], ENT_QUOTES, 'UTF-8') ?> Syllabus
-                        </a>
-                    <?php endif; ?>
-                <?php endforeach; ?>
-            </div>
-        </div>
-    <?php endif; ?>
+    
     <div class="mb-4 d-flex gap-2 flex-wrap">
         <?php if (has_role(ROLE_STUDENT)): ?>
             <a href="https://wa.me/2348169321558?text=<?= rawurlencode('I want to purchase: ' . $product['name'] . '. My username is: ' . $user['username']) ?>"
